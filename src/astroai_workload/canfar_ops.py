@@ -181,7 +181,8 @@ class CanfarOps:
         found: dict[str, str] = {}
         for attempt in range(1, 7):
             try:
-                rows = self._fresh_session().fetch(view="all")
+                # Own sessions only — view=all strips id/name (platform privacy).
+                rows = self._fresh_session().fetch()
             except Exception:  # noqa: BLE001 — catalog race; retry
                 rows = []
             for row in rows or []:
@@ -195,12 +196,15 @@ class CanfarOps:
         return [found[n] for n in expected if n in found]
 
     def list_headless_sessions(self, *, name_prefix: str) -> list[dict[str, Any]]:
-        rows = self._fresh_session().fetch(kind="headless", view="all")
+        # Do not pass view=all: that returns every user's sessions with id/name
+        # stripped, so the autoscaler hard-cap cannot see live ray-as-* workers.
+        rows = self._fresh_session().fetch(kind="headless")
         return [row for row in rows if str(row.get("name", "")).startswith(name_prefix)]
 
     def list_sessions(self) -> list[dict[str, Any]]:
         """All sessions visible to the user (any kind)."""
-        rows = self._fresh_session().fetch(view="all")
+        # Own catalog only (full fields). view=all is anonymized.
+        rows = self._fresh_session().fetch()
         return list(rows or [])
 
     def session_info(self, session_id: str) -> dict[str, Any]:

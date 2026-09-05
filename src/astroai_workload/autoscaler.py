@@ -17,6 +17,8 @@ Provider config (``provider.config`` in the autoscaling YAML)::
     cores: 1
     ram_gb: 4
     gpus: 0
+    max_workers: 8
+    pending_timeout_minutes: 15
     heartbeat_path: /arc/home/<user>/.astroai/ray/clusters/<id>/manager-heartbeat
     cluster_id: default
     node_manager_port, object_manager_port, ...  (optional Ray port pins)
@@ -58,6 +60,10 @@ except ImportError as exc:
 
 _TERMINAL_SESSION_STATUSES = {"Failed", "Error", "Succeeded", "Completed", "Terminating"}
 _RUNNING_SESSION_STATUSES = {"Running"}
+_PENDING_SESSION_STATUSES = {"Pending"}
+_DEFAULT_PENDING_TIMEOUT_MINUTES = 15
+_DESTROY_RETRIES = 3
+_DESTROY_RETRY_SLEEP_S = 0.5
 
 # Ray autoscaler tag names (ray.autoscaler.tags). Workers start Ray themselves
 # (start-worker.sh); the head is this manager process, not a Skaha session.
@@ -109,6 +115,7 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
         self.cluster_name = cluster_name
         self._ops = CanfarOps()
         self._tags: dict[str, dict[str, str]] = {}
+        self._inflight: set[str] = set()
         self._lock = threading.Lock()
 
     # -- config helpers -----------------------------------------------------
@@ -116,12 +123,53 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
     def _worker_image(self) -> str:
         return str(self.provider_config.get("worker_image") or _default_worker_image())
 
+    def _max_workers(self) -> int:
+        raw = self.provider_config.get("max_workers")
+        if raw is None:
+            raw = os.environ.get("RAY_AUTOSCALING_MAX_WORKERS", "8")
+        try:
+            return max(0, int(raw))
+        except (TypeError, ValueError):
+            return 8
+
+    def _pending_timeout_minutes(self) -> int:
+        raw = self.provider_config.get("pending_timeout_minutes")
+        if raw is None:
+            raw = os.environ.get(
+                "RAY_AUTOSCALING_PENDING_TIMEOUT_MINUTES",
+                str(_DEFAULT_PENDING_TIMEOUT_MINUTES),
+            )
+        try:
+            return max(1, int(raw))
+        except (TypeError, ValueError):
+            return _DEFAULT_PENDING_TIMEOUT_MINUTES
+
     def _worker_spec(self) -> dict[str, Any]:
         return {
             "cores": int(self.provider_config.get("cores", 1)),
             "ram_gb": int(self.provider_config.get("ram_gb", 4)),
             "gpus": int(self.provider_config.get("gpus", 0)),
         }
+
+    def _list_autoscaler_sessions(self) -> list[dict[str, Any]]:
+        """Non-terminal listing; raises on CANFAR list failure (fail closed)."""
+        return list(
+            self._ops.list_headless_sessions(name_prefix=f"ray-as-{self.cluster_name}")
+        )
+
+    def _count_live_workers(self, rows: list[dict[str, Any]] | None = None) -> int:
+        if rows is None:
+            rows = self._list_autoscaler_sessions()
+        n = 0
+        for row in rows:
+            status = str(row.get("status") or "Unknown")
+            if status in _TERMINAL_SESSION_STATUSES:
+                continue
+            if str(row.get("id") or "").strip():
+                n += 1
+        with self._lock:
+            n += len(self._inflight)
+        return n
 
     def _heartbeat_path(self) -> str:
         return str(
@@ -173,29 +221,80 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
     def create_node(
         self, node_config: dict[str, Any], tags: dict[str, str], count: int
     ) -> dict[str, str]:
-        """Launch *count* headless ray-worker sessions; return {node_id: ip}."""
+        """Launch *count* headless ray-worker sessions; return {node_id: ip}.
+
+        Hard-caps against ``max_workers`` using a live Skaha listing (Pending
+        counts) plus an in-process inflight set so overlapping creates cannot
+        overshoot. List failures fail closed (no create).
+        """
         kind = (tags or {}).get(TAG_RAY_NODE_KIND)
         if kind == NODE_KIND_HEAD or count <= 0:
             # Head is this manager. Ray may still ask; do not spawn a worker.
             return {_HEAD_NODE_ID: manager_pod_ip()} if kind == NODE_KIND_HEAD else {}
+
+        self._reap_stale_pending()
+
+        try:
+            rows = self._list_autoscaler_sessions()
+        except Exception as exc:  # noqa: BLE001 — fail closed on catalog errors
+            logger.error(
+                "Refusing create_node: list_headless_sessions failed (%s)", exc
+            )
+            raise RuntimeError(
+                f"Cannot list autoscaler sessions; refusing create (fail closed): {exc}"
+            ) from exc
+
+        max_w = self._max_workers()
+        current = self._count_live_workers(rows)
+        allowed = max(0, max_w - current)
+        if allowed <= 0:
+            logger.warning(
+                "create_node refused: already at max_workers=%s (live+inflight=%s)",
+                max_w,
+                current,
+            )
+            return {}
+        if count > allowed:
+            logger.warning(
+                "create_node clamping count %s -> %s (max_workers=%s live+inflight=%s)",
+                count,
+                allowed,
+                max_w,
+                current,
+            )
+            count = allowed
+
+        # Reserve inflight slots before the slow Skaha create so concurrent
+        # create_node calls see the reservation in _count_live_workers.
+        placeholders = [f"inflight-{time.time_ns()}-{i}" for i in range(count)]
+        with self._lock:
+            self._inflight.update(placeholders)
+
         spec = self._worker_spec()
         # Distinct ``ray-as-`` prefix (autoscaler-managed) so the manager's
         # orphan GC (which owns ``ray-w-``/``ray-retry-``/``ray-preflight-``)
         # never destroys autoscaler nodes, and Ray's autoscaler never adopts
         # manager-created workers (non_terminated_nodes matches this prefix).
         name = f"ray-as-{self.cluster_name}-{int(time.time() * 1000)}"[:60]
-        launches = self._ops.create_headless(
-            name=name,
-            image=self._worker_image(),
-            cores=spec["cores"],
-            ram=spec["ram_gb"],
-            gpu=spec["gpus"] or None,
-            env=self._worker_env(),
-            replicas=count,
-        )
+        try:
+            launches = self._ops.create_headless(
+                name=name,
+                image=self._worker_image(),
+                cores=spec["cores"],
+                ram=spec["ram_gb"],
+                gpu=spec["gpus"] or None,
+                env=self._worker_env(),
+                replicas=count,
+            )
+        except Exception:
+            with self._lock:
+                self._inflight.difference_update(placeholders)
+            raise
+
         result: dict[str, str] = {}
         stored = {**_WORKER_TAG_DEFAULTS, **(tags or {})}
         with self._lock:
+            self._inflight.difference_update(placeholders)
             for launch in launches:
                 self._tags[launch.session_id] = dict(stored)
                 # Ray resolves IPs lazily via internal_ip(); session may still be Pending.
@@ -207,15 +306,25 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
             return
         with self._lock:
             self._tags.pop(node_id, None)
-        self._ops.destroy(node_id)
+        _destroy_session_with_retries(self._ops, node_id)
 
     def terminate_nodes(self, node_ids: list[str]) -> None:
         for node_id in node_ids:
             self.terminate_node(node_id)
 
     def non_terminated_nodes(self, tag_filters: dict[str, str]) -> list[str]:
+        self._reap_stale_pending()
         ids = [_HEAD_NODE_ID]
-        for row in self._ops.list_headless_sessions(name_prefix=f"ray-as-{self.cluster_name}"):
+        try:
+            rows = self._list_autoscaler_sessions()
+        except Exception as exc:  # noqa: BLE001 — return head-only on list failure
+            logger.error("non_terminated_nodes list failed (%s); returning head only", exc)
+            return [_HEAD_NODE_ID] if not tag_filters else (
+                [_HEAD_NODE_ID]
+                if _tags_match(self.node_tags(_HEAD_NODE_ID), tag_filters)
+                else []
+            )
+        for row in rows:
             sid = str(row.get("id") or "")
             if not sid:
                 continue
@@ -226,6 +335,38 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
         if not tag_filters:
             return ids
         return [nid for nid in ids if _tags_match(self.node_tags(nid), tag_filters)]
+
+    def _reap_stale_pending(self) -> None:
+        """Destroy Pending ray-as-* sessions older than the Pending TTL."""
+        timeout_s = self._pending_timeout_minutes() * 60
+        now = time.time()
+        try:
+            rows = self._list_autoscaler_sessions()
+        except Exception as exc:  # noqa: BLE001 — reaper must not block create
+            logger.warning("pending reaper skipped: list failed (%s)", exc)
+            return
+        for row in rows:
+            status = str(row.get("status") or "Unknown")
+            if status not in _PENDING_SESSION_STATUSES:
+                continue
+            sid = str(row.get("id") or "").strip()
+            if not sid:
+                continue
+            age = _session_age_seconds(row, now=now)
+            if age is None or age < timeout_s:
+                continue
+            logger.warning(
+                "Reaping stale Pending autoscaler session %s (age=%.0fs > %ss)",
+                sid,
+                age,
+                timeout_s,
+            )
+            try:
+                _destroy_session_with_retries(self._ops, sid)
+            except Exception as exc:  # noqa: BLE001 — continue reaping others
+                logger.error("Failed to reap Pending session %s: %s", sid, exc)
+            with self._lock:
+                self._tags.pop(sid, None)
 
     def is_running(self, node_id: str) -> bool:
         if node_id == _HEAD_NODE_ID:
@@ -313,6 +454,13 @@ def write_autoscaling_config(
         "cores": cores,
         "ram_gb": ram_gb,
         "gpus": gpus,
+        "max_workers": int(max_workers),
+        "pending_timeout_minutes": int(
+            os.environ.get(
+                "RAY_AUTOSCALING_PENDING_TIMEOUT_MINUTES",
+                str(_DEFAULT_PENDING_TIMEOUT_MINUTES),
+            )
+        ),
         "ray_head_port": ray_head_port,
         "ray_version": version,
         "spill_dir": spill,
@@ -401,22 +549,172 @@ def write_manager_autoscaling_env(
         return path
     from astroai_lab.utils.json_utils import atomic_write_text
 
-    atomic_write_text(
-        path,
-        "\n".join(
-            [
-                "RAY_AUTOSCALING_ENABLED=1",
-                f"RAY_AUTOSCALING_MIN_WORKERS={int(min_workers)}",
-                f"RAY_AUTOSCALING_MAX_WORKERS={int(max_workers)}",
-                f"RAY_AUTOSCALING_CORES={int(cores)}",
-                f"RAY_AUTOSCALING_RAM_GB={int(ram_gb)}",
-                f"RAY_AUTOSCALING_GPUS={int(gpus)}",
-                f"RAY_AUTOSCALING_IDLE_TIMEOUT_MINUTES={int(idle_timeout_minutes)}",
-                "",
-            ]
-        ),
-    )
+    lines = [
+        "RAY_AUTOSCALING_ENABLED=1",
+        f"RAY_AUTOSCALING_MIN_WORKERS={int(min_workers)}",
+        f"RAY_AUTOSCALING_MAX_WORKERS={int(max_workers)}",
+        f"RAY_AUTOSCALING_CORES={int(cores)}",
+        f"RAY_AUTOSCALING_RAM_GB={int(ram_gb)}",
+        f"RAY_AUTOSCALING_GPUS={int(gpus)}",
+        f"RAY_AUTOSCALING_IDLE_TIMEOUT_MINUTES={int(idle_timeout_minutes)}",
+    ]
+    # Manager image ships stock astroai_workload; point PYTHONPATH at a
+    # checked-out tree on /arc so create_node hard-cap / idle fixes load.
+    # ASTROAI_LAB_PYTHONPATH is merged by `astroai env export` (profile boot).
+    workload_src = (os.environ.get("ASTROAI_WORKLOAD_SRC") or "").strip()
+    if workload_src:
+        src_path = f"{workload_src.rstrip('/')}/src"
+        lines.append(f"PYTHONPATH={src_path}")
+        lines.append(f"ASTROAI_LAB_PYTHONPATH={src_path}")
+        lines.append(f"ASTROAI_WORKLOAD_SRC={workload_src.rstrip('/')}")
+    lines.append("")
+    atomic_write_text(path, "\n".join(lines))
     return path
+
+
+def read_manager_autoscaling_env(path: Path | None = None) -> dict[str, int] | None:
+    """Parse the manager autoscaling env file into comparable ints.
+
+    Returns ``None`` when the file is missing or unreadable.
+    """
+    path = path or manager_autoscaling_env_path()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    raw: dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        raw[key.strip()] = val.strip()
+    keys = {
+        "min_workers": "RAY_AUTOSCALING_MIN_WORKERS",
+        "max_workers": "RAY_AUTOSCALING_MAX_WORKERS",
+        "cores": "RAY_AUTOSCALING_CORES",
+        "ram_gb": "RAY_AUTOSCALING_RAM_GB",
+        "gpus": "RAY_AUTOSCALING_GPUS",
+        "idle_timeout_minutes": "RAY_AUTOSCALING_IDLE_TIMEOUT_MINUTES",
+    }
+    out: dict[str, int] = {}
+    for dest, env_key in keys.items():
+        if env_key not in raw:
+            return None
+        try:
+            out[dest] = int(raw[env_key])
+        except ValueError:
+            return None
+    return out
+
+
+def destroy_autoscaler_workers(
+    ops: CanfarOps | None = None,
+    *,
+    cluster_name: str | None = None,
+) -> list[str]:
+    """Destroy ``ray-as-*`` sessions (optionally limited to one cluster name).
+
+    Used by ``cluster stop`` so teardown is not limited to manager-owned
+    ``ray-w-*`` workers tracked in the state store. Returns destroyed session IDs.
+    """
+    ops = ops or CanfarOps()
+    prefix = f"ray-as-{cluster_name}" if cluster_name else "ray-as-"
+    destroyed: list[str] = []
+    try:
+        rows = ops.list_headless_sessions(name_prefix=prefix)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("destroy_autoscaler_workers: list failed (%s)", exc)
+        return destroyed
+    for row in rows:
+        status = str(row.get("status") or "Unknown")
+        if status in _TERMINAL_SESSION_STATUSES:
+            continue
+        sid = str(row.get("id") or "").strip()
+        if not sid:
+            continue
+        try:
+            _destroy_session_with_retries(ops, sid)
+            destroyed.append(sid)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("destroy_autoscaler_workers: failed for %s (%s)", sid, exc)
+    return destroyed
+
+
+def _destroy_session_with_retries(ops: CanfarOps, session_id: str) -> None:
+    """Retry Skaha destroy; raise if the session still looks non-terminal."""
+    last_ok = False
+    for attempt in range(1, _DESTROY_RETRIES + 1):
+        last_ok = bool(ops.destroy(session_id))
+        if last_ok:
+            return
+        if attempt < _DESTROY_RETRIES:
+            time.sleep(_DESTROY_RETRY_SLEEP_S)
+    status = "Unknown"
+    try:
+        status = ops.session_status(session_id)
+    except Exception:  # noqa: BLE001
+        pass
+    if status in _TERMINAL_SESSION_STATUSES:
+        return
+    raise RuntimeError(
+        f"Failed to destroy session {session_id} after {_DESTROY_RETRIES} attempts "
+        f"(status={status}, destroy_ok={last_ok})"
+    )
+
+
+def _session_age_seconds(row: dict[str, Any], *, now: float | None = None) -> float | None:
+    """Best-effort age for a Skaha session row.
+
+    Prefers explicit start/creation fields; falls back to a millisecond
+    epoch embedded in ``ray-as-<cluster>-<ms>`` names (including replica
+    suffixes like ``…-<ms>-1``).
+    """
+    import re
+
+    now = time.time() if now is None else now
+    for key in (
+        "startTime",
+        "starttime",
+        "creationTime",
+        "created",
+        "createdAt",
+        "startDate",
+    ):
+        raw = row.get(key)
+        if raw in (None, ""):
+            continue
+        parsed = _parse_time_to_epoch(raw)
+        if parsed is not None:
+            return max(0.0, now - parsed)
+    name = str(row.get("name") or "")
+    # Prefer a 12+ digit token (ms since epoch); ignore short replica indices.
+    matches = re.findall(r"(?<!\d)(\d{12,})(?!\d)", name)
+    if matches:
+        ms = int(matches[-1])
+        epoch = ms / 1000.0 if ms > 10_000_000_000 else float(ms)
+        return max(0.0, now - epoch)
+    return None
+
+
+def _parse_time_to_epoch(raw: Any) -> float | None:
+    if isinstance(raw, (int, float)):
+        val = float(raw)
+        return val / 1000.0 if val > 10_000_000_000 else val
+    text = str(raw).strip()
+    if not text:
+        return None
+    if text.isdigit():
+        return _parse_time_to_epoch(int(text))
+    # ISO-8601 (optional trailing Z).
+    try:
+        from datetime import datetime
+
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        return datetime.fromisoformat(text).timestamp()
+    except ValueError:
+        return None
 
 
 def _yaml_inline(data: dict[str, Any]) -> str:

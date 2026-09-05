@@ -67,7 +67,9 @@ def resolve_dashboard_url(
          — skipped when ``live=False`` (shell ``env export`` / profile).
       3. Live manager still Pending (no connect URL yet) → ``None`` so callers
          poll instead of using a stale persisted URL from a previous manager.
-      4. Persisted connect URL under ``~/.astroai/ray/clusters/*/connect-url``.
+      4. Persisted connect URL under ``~/.astroai/ray/clusters/*/connect-url``,
+         but only when a quick probe succeeds (or the URL session id matches
+         the live manager id). Dead persists are cleared.
 
     Returns ``None`` when nothing is resolvable.
     """
@@ -77,21 +79,25 @@ def resolve_dashboard_url(
     if explicit:
         return explicit.strip()
 
+    manager_id: str | None = None
     if live:
-        live_url, manager_visible = _live_manager_connect()
+        live_url, manager_visible, manager_id = _live_manager_connect()
         if live_url:
             return jobs_url_from_connect(live_url)
         if manager_visible:
             return None
 
     persisted = read_persisted_connect_url()
-    if persisted:
+    if not persisted:
+        return None
+    if _persisted_connect_is_usable(persisted, manager_id=manager_id):
         return jobs_url_from_connect(persisted)
+    clear_persisted_connect_urls()
     return None
 
 
-def _live_manager_connect() -> tuple[str | None, bool]:
-    """Return ``(connect_url, manager_visible)`` from CANFAR session listing.
+def _live_manager_connect() -> tuple[str | None, bool, str | None]:
+    """Return ``(connect_url, manager_visible, manager_id)`` from CANFAR listing.
 
     When a Running manager has a connect URL, best-effort persist it so
     ``env export`` and later resolution work without another ``canfar ps``.
@@ -101,18 +107,59 @@ def _live_manager_connect() -> tuple[str | None, bool]:
 
         ops = CanfarOps()
         if not ops.auth_status().authenticated:
-            return None, False
+            return None, False, None
         row = ops.find_manager()
         if not row:
-            return None, False
+            return None, False, None
         connect = str(row.get("connectURL") or row.get("connectUrl") or "").strip()
+        mid = str(row.get("id") or row.get("sessionId") or "").strip() or None
         if connect:
-            sid = str(row.get("id") or row.get("sessionId") or "discovered").strip()
+            sid = mid or "discovered"
             with contextlib.suppress(Exception):
                 persist_connect_url(f"mgr-{sid}", connect)
-        return (connect or None), True
+        return (connect or None), True, mid
     except Exception:  # noqa: BLE001 — discovery must never raise to callers
-        return None, False
+        return None, False, None
+
+
+def _persisted_connect_is_usable(connect_url: str, *, manager_id: str | None) -> bool:
+    """True when persisted URL matches a live manager id or probes successfully."""
+    sid = _session_id_from_connect_url(connect_url)
+    if manager_id and sid and sid == manager_id:
+        return True
+    if sid and manager_id is None:
+        # No live manager; only keep persist if a cheap HTTP probe succeeds.
+        return _probe_manager_url(connect_url)
+    return False
+
+
+def _session_id_from_connect_url(connect_url: str) -> str | None:
+    # https://workloads.canfar.net/session/contrib/<id>[/...]
+    parts = connect_url.rstrip("/").split("/")
+    try:
+        idx = parts.index("session")
+        if idx + 2 < len(parts):
+            return parts[idx + 2] or None
+    except ValueError:
+        pass
+    return parts[-1] if parts else None
+
+
+def _probe_manager_url(connect_url: str) -> bool:
+    base = connect_url.rstrip("/")
+    if base.endswith("/dashboard"):
+        base = base[: -len("/dashboard")]
+    urls = (f"{base}/api/v1/status", f"{base}/dashboard/api/version", base)
+    for url in urls:
+        try:
+            resp = httpx.get(url, timeout=3.0)
+            # Only 2xx means the manager is actually reachable; 404 from a dead
+            # session must not keep a stale persisted connect URL.
+            if 200 <= resp.status_code < 300:
+                return True
+        except Exception:  # noqa: BLE001 — probe failures mean unusable
+            continue
+    return False
 
 
 def read_persisted_connect_url() -> str | None:

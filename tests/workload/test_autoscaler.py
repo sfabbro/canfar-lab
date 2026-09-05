@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import time
 import types
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -73,6 +74,8 @@ sys.modules.setdefault("canfar.sessions", _canfar_sessions)
 
 from astroai_workload.autoscaler import (  # noqa: E402
     CanfarNodeProvider,
+    destroy_autoscaler_workers,
+    read_manager_autoscaling_env,
     write_autoscaling_config,
     write_manager_autoscaling_env,
 )
@@ -84,6 +87,8 @@ def _provider(**config):
         "cores": 2,
         "ram_gb": 8,
         "gpus": 1,
+        "max_workers": 8,
+        "pending_timeout_minutes": 15,
         "heartbeat_path": "/arc/home/u/.astroai/ray/clusters/c1/manager-heartbeat",
         "ray_version": "2.56.1",
         **config,
@@ -98,6 +103,7 @@ def test_create_node_launches_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
         MagicMock(session_id="sid-2", name="ray-w-c1-2"),
     ]
     provider._ops.create_headless = MagicMock(return_value=launches)
+    provider._ops.list_headless_sessions = MagicMock(return_value=[])
 
     result = provider.create_node(
         node_config={}, tags={"ray_node_type_name": "ray.worker.default"}, count=2
@@ -116,6 +122,81 @@ def test_create_node_launches_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
     assert kwargs["name"].startswith("ray-as-c1-")
     assert provider.node_tags("sid-1")["ray-node-type"] == "worker"
     assert provider.node_tags("sid-1")["ray_node_type_name"] == "ray.worker.default"
+
+
+def test_create_node_refuses_at_max_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _provider(max_workers=2)
+    provider._ops.list_headless_sessions = MagicMock(
+        return_value=[
+            {"id": "a", "status": "Running", "name": "ray-as-c1-1"},
+            {"id": "b", "status": "Pending", "name": "ray-as-c1-2"},
+        ]
+    )
+    provider._ops.create_headless = MagicMock()
+    assert provider.create_node(node_config={}, tags={}, count=1) == {}
+    provider._ops.create_headless.assert_not_called()
+
+
+def test_create_node_clamps_to_max_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _provider(max_workers=3)
+    provider._ops.list_headless_sessions = MagicMock(
+        return_value=[{"id": "a", "status": "Running", "name": "ray-as-c1-1"}]
+    )
+    provider._ops.create_headless = MagicMock(
+        return_value=[
+            MagicMock(session_id="b", name="ray-as-c1-2"),
+            MagicMock(session_id="c", name="ray-as-c1-3"),
+        ]
+    )
+    result = provider.create_node(node_config={}, tags={}, count=5)
+    assert set(result) == {"b", "c"}
+    assert provider._ops.create_headless.call_args.kwargs["replicas"] == 2
+
+
+def test_create_node_list_failure_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _provider(max_workers=4)
+    provider._ops.list_headless_sessions = MagicMock(side_effect=RuntimeError("catalog down"))
+    provider._ops.create_headless = MagicMock()
+    with pytest.raises(RuntimeError, match="fail closed"):
+        provider.create_node(node_config={}, tags={}, count=1)
+    provider._ops.create_headless.assert_not_called()
+
+
+def test_reap_stale_pending(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _provider(pending_timeout_minutes=1)
+    # Name embeds ms epoch well in the past.
+    old_ms = int((time.time() - 3600) * 1000)
+    provider._ops.list_headless_sessions = MagicMock(
+        return_value=[
+            {
+                "id": "stale",
+                "status": "Pending",
+                "name": f"ray-as-c1-{old_ms}",
+            },
+            {
+                "id": "fresh",
+                "status": "Pending",
+                "name": f"ray-as-c1-{int(time.time() * 1000)}",
+            },
+            {"id": "run", "status": "Running", "name": "ray-as-c1-run"},
+        ]
+    )
+    provider._ops.destroy = MagicMock(return_value=True)
+    provider._reap_stale_pending()
+    provider._ops.destroy.assert_called_once_with("stale")
+
+
+def test_destroy_autoscaler_workers() -> None:
+    ops = MagicMock()
+    ops.list_headless_sessions.return_value = [
+        {"id": "w1", "status": "Running", "name": "ray-as-c1-1"},
+        {"id": "w2", "status": "Pending", "name": "ray-as-c1-2"},
+        {"id": "done", "status": "Succeeded", "name": "ray-as-c1-3"},
+    ]
+    ops.destroy.return_value = True
+    destroyed = destroy_autoscaler_workers(ops, cluster_name="c1")
+    assert set(destroyed) == {"w1", "w2"}
+    assert ops.list_headless_sessions.call_args.kwargs["name_prefix"] == "ray-as-c1"
 
 
 def test_internal_ip_resolves_after_running(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -202,6 +283,7 @@ def test_write_autoscaling_config(tmp_path: pytest.MonkeyPatch) -> None:
     assert "min_workers: 2" in text
     assert "max_workers: 8" in text
     assert '"cores": 4' in text
+    assert '"max_workers": 8' in text
     assert "astroai_workload.autoscaler.CanfarNodeProvider" in text
     # Keys Ray 2.x StandardAutoscaler.reset() hard-requires (KeyError otherwise).
     for required in (
@@ -329,6 +411,7 @@ def test_import_guard_propagates_non_importerror(monkeypatch: pytest.MonkeyPatch
 
 def test_write_manager_autoscaling_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("ASTROAI_WORKLOAD_SRC", raising=False)
     path = write_manager_autoscaling_env(max_workers=3, cores=2, ram_gb=8)
     assert path == tmp_path / ".config" / "canfar" / "lab" / "ray-manager.env"
     text = path.read_text()
@@ -336,5 +419,36 @@ def test_write_manager_autoscaling_env(tmp_path: Path, monkeypatch: pytest.Monke
     assert "RAY_AUTOSCALING_MAX_WORKERS=3" in text
     assert "RAY_AUTOSCALING_CORES=2" in text
     assert "RAY_AUTOSCALING_RAM_GB=8" in text
+    assert "RAY_AUTOSCALING_IDLE_TIMEOUT_MINUTES=5" in text
+    assert "PYTHONPATH=" not in text
     write_manager_autoscaling_env(enabled=False)
     assert not path.exists()
+    assert read_manager_autoscaling_env() is None
+
+
+def test_write_manager_autoscaling_env_pythonpath(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("ASTROAI_WORKLOAD_SRC", "/arc/projects/hats/zscrape/src/canfar-lab")
+    path = write_manager_autoscaling_env(
+        max_workers=3, cores=2, ram_gb=8, idle_timeout_minutes=2
+    )
+    text = path.read_text()
+    assert "PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
+    assert "ASTROAI_LAB_PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
+    assert "RAY_AUTOSCALING_IDLE_TIMEOUT_MINUTES=2" in text
+
+
+def test_read_manager_autoscaling_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    write_manager_autoscaling_env(min_workers=1, max_workers=4, cores=8, ram_gb=64, gpus=0)
+    parsed = read_manager_autoscaling_env()
+    assert parsed == {
+        "min_workers": 1,
+        "max_workers": 4,
+        "cores": 8,
+        "ram_gb": 64,
+        "gpus": 0,
+        "idle_timeout_minutes": 5,
+    }

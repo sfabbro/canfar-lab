@@ -550,6 +550,7 @@ def cluster_start_payload(
     cores: int = 1,
     ram: int = 4,
     gpus: int = 0,
+    idle_timeout_minutes: int = 5,
     timeout: int = 1800,
 ) -> dict[str, Any]:
     """Start (or reuse) an autoscaling Ray cluster.
@@ -572,6 +573,7 @@ def cluster_start_payload(
             cores=cores,
             ram=ram,
             gpus=gpus,
+            idle_timeout_minutes=idle_timeout_minutes,
             timeout=timeout,
         )
 
@@ -584,20 +586,37 @@ def _cluster_start_locked(
     cores: int,
     ram: int,
     gpus: int,
+    idle_timeout_minutes: int,
     timeout: int,
 ) -> dict[str, Any]:
     """Cluster start body — caller holds the control lock."""
-    from .autoscaler import write_manager_autoscaling_env
+    from .autoscaler import (
+        destroy_autoscaler_workers,
+        manager_autoscaling_env_path,
+        read_manager_autoscaling_env,
+        write_manager_autoscaling_env,
+    )
     from .dashboard import persist_connect_url, resolve_dashboard_url
 
+    requested = {
+        "min_workers": int(min_workers),
+        "max_workers": int(max_workers),
+        "cores": int(cores),
+        "ram_gb": int(ram),
+        "gpus": int(gpus),
+        "idle_timeout_minutes": int(idle_timeout_minutes),
+    }
+    previous = read_manager_autoscaling_env()
     write_manager_autoscaling_env(
         min_workers=min_workers,
         max_workers=max_workers,
         cores=cores,
         ram_gb=ram,
         gpus=gpus,
+        idle_timeout_minutes=idle_timeout_minutes,
     )
 
+    recycled_manager = False
     existing_manager = False
     if not address:
         try:
@@ -606,8 +625,36 @@ def _cluster_start_locked(
             raise RuntimeError("The canfar client is required to create a manager.") from exc
 
         ops = CanfarOps()
-        existing_manager = ops.find_manager() is not None
-        if not existing_manager:
+        manager = ops.find_manager()
+        existing_manager = manager is not None
+        # Live manager sourced env at boot. Recycle when the requested shape
+        # differs from the last written env, OR when no previous env exists
+        # (cannot verify the live manager matches — common after hub starts).
+        needs_recycle = bool(
+            existing_manager
+            and (
+                previous is None
+                or any(previous.get(k) != requested[k] for k in requested)
+            )
+        )
+        if needs_recycle:
+            destroy_autoscaler_workers(ops)
+            mid = str((manager or {}).get("id") or "").strip()
+            if mid:
+                ops.destroy(mid)
+            # Clear stale discovery so we wait for the new manager.
+            from .dashboard import clear_persisted_connect_urls
+
+            clear_persisted_connect_urls()
+            ops.create_contributed(
+                name="raymgr",
+                image=_manager_image(),
+                cores=2,
+                ram=8,
+            )
+            recycled_manager = True
+            existing_manager = False
+        elif not existing_manager:
             ops.create_contributed(
                 name="raymgr",
                 image=_manager_image(),
@@ -654,8 +701,11 @@ def _cluster_start_locked(
         "cluster_phase": (status.get("cluster") or {}).get("phase"),
         "joined_workers": status.get("joined_workers", 0),
         "autoscaling": True,
+        "autoscaling_env": str(manager_autoscaling_env_path()),
     }
-    if existing_manager:
+    if recycled_manager:
+        result["recycled_manager"] = True
+    elif existing_manager:
         result["restart_manager"] = True
     return result
 
@@ -674,6 +724,13 @@ def cluster_cmd_start(
     cores: Annotated[int, typer.Option("--cores", help="CPUs per worker.")] = 1,
     ram: Annotated[int, typer.Option("--ram", help="RAM GiB per worker.")] = 4,
     gpus: Annotated[int, typer.Option("--gpus", help="GPUs per worker.")] = 0,
+    idle_timeout_minutes: Annotated[
+        int,
+        typer.Option(
+            "--idle-timeout-minutes",
+            help="Terminate idle autoscaler workers after this many minutes.",
+        ),
+    ] = 5,
     timeout: Annotated[int, typer.Option("--timeout", help="Wait timeout (seconds).")] = 1800,
     as_json: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
@@ -694,6 +751,7 @@ def cluster_cmd_start(
             cores=cores,
             ram=ram,
             gpus=gpus,
+            idle_timeout_minutes=idle_timeout_minutes,
             timeout=timeout,
         )
     except RuntimeError as exc:
@@ -705,7 +763,9 @@ def cluster_cmd_start(
         print(f"jobs/dash:   {result['jobs_address']}")
         print(f"phase:       {result['cluster_phase']}  joined: {result['joined_workers']}")
         print(f"autoscaling: on ({min_workers}–{max_workers} workers)")
-        if result.get("restart_manager"):
+        if result.get("recycled_manager"):
+            print("manager recycled (autoscaler env changed)")
+        elif result.get("restart_manager"):
             print(
                 "this manager was already running — stop it and re-run "
                 "`cluster start` if jobs do not scale"
@@ -762,6 +822,7 @@ def _cluster_stop_locked(*, address: str | None) -> dict[str, Any]:
     """Cluster teardown body — caller holds the control lock."""
     import httpx
 
+    from .autoscaler import destroy_autoscaler_workers
     from .dashboard import clear_persisted_connect_urls
 
     stopped_cluster = False
@@ -774,12 +835,17 @@ def _cluster_stop_locked(*, address: str | None) -> dict[str, Any]:
         manager_error = str(exc)
 
     destroyed_manager = False
+    destroyed_autoscaler: list[str] = []
     try:
         from .canfar_ops import CanfarOps
     except ImportError as exc:
         raise RuntimeError("The canfar client is required to tear down the manager.") from exc
 
     ops = CanfarOps()
+    # Always reap ray-as-* even when the manager API is down — those sessions
+    # are owned by Ray's CanfarNodeProvider and are invisible to stop_cluster's
+    # state-store worker list.
+    destroyed_autoscaler = destroy_autoscaler_workers(ops)
     manager = ops.find_manager()
     detail: str | None = None
     if manager and manager.get("id"):
@@ -791,6 +857,7 @@ def _cluster_stop_locked(*, address: str | None) -> dict[str, Any]:
         "stopped_cluster": stopped_cluster,
         "manager_found": bool(manager),
         "destroyed_manager": destroyed_manager,
+        "destroyed_autoscaler_workers": destroyed_autoscaler,
         "cleared_state": cleared,
         "error": manager_error,
         "detail": detail,
