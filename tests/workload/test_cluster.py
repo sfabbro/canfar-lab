@@ -705,9 +705,12 @@ class TestClusterStartAutoscaling:
     def test_existing_manager_hints_restart(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from astroai_workload.autoscaler import write_manager_autoscaling_env
         from astroai_workload.cli import cluster_start_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
+        # Same shape as cluster_start_payload defaults → no recycle.
+        write_manager_autoscaling_env(min_workers=0, max_workers=8, cores=1, ram_gb=4, gpus=0)
 
         class _Ops:
             def find_manager(self):
@@ -715,6 +718,12 @@ class TestClusterStartAutoscaling:
 
             def create_contributed(self, **kwargs):
                 raise AssertionError("must not create a second manager")
+
+            def list_headless_sessions(self, **kwargs):
+                return []
+
+            def destroy(self, session_id: str) -> bool:
+                raise AssertionError("must not destroy when env unchanged")
 
         monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
         monkeypatch.setattr(
@@ -729,6 +738,92 @@ class TestClusterStartAutoscaling:
         result = cluster_start_payload()
         assert result["restart_manager"] is True
         assert result["autoscaling"] is True
+        assert "recycled_manager" not in result
+
+    def test_existing_manager_recycles_when_no_previous_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from astroai_workload.cli import cluster_start_payload
+
+        monkeypatch.setenv("HOME", str(tmp_path))
+        # No ray-manager.env yet → cannot verify live shape → recycle.
+        destroyed: list[str] = []
+        created: list[dict] = []
+
+        class _Ops:
+            def find_manager(self):
+                return {"id": "old-mgr", "name": "raymgr", "status": "Running"}
+
+            def create_contributed(self, **kwargs):
+                created.append(kwargs)
+                return None
+
+            def list_headless_sessions(self, **kwargs):
+                return []
+
+            def destroy(self, session_id: str) -> bool:
+                destroyed.append(session_id)
+                return True
+
+        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr(
+            "astroai_workload.dashboard.resolve_dashboard_url",
+            lambda: "https://mgr/dashboard",
+        )
+        monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
+        monkeypatch.setattr("astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
+        monkeypatch.setattr(
+            "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
+        )
+
+        result = cluster_start_payload(max_workers=2)
+        assert result.get("recycled_manager") is True
+        assert "old-mgr" in destroyed
+        assert created and created[0]["name"] == "raymgr"
+
+    def test_existing_manager_recycles_when_env_changes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from astroai_workload.autoscaler import write_manager_autoscaling_env
+        from astroai_workload.cli import cluster_start_payload
+
+        monkeypatch.setenv("HOME", str(tmp_path))
+        write_manager_autoscaling_env(min_workers=1, max_workers=4, cores=8, ram_gb=64, gpus=0)
+        destroyed: list[str] = []
+        created: list[dict] = []
+
+        class _Ops:
+            def find_manager(self):
+                return {"id": "old-mgr", "name": "raymgr", "status": "Running"}
+
+            def create_contributed(self, **kwargs):
+                created.append(kwargs)
+                return None
+
+            def list_headless_sessions(self, **kwargs):
+                return [{"id": "as-1", "status": "Pending", "name": "ray-as-mgr-old-1"}]
+
+            def destroy(self, session_id: str) -> bool:
+                destroyed.append(session_id)
+                return True
+
+        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr(
+            "astroai_workload.dashboard.resolve_dashboard_url",
+            lambda: "https://mgr/dashboard",
+        )
+        monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
+        monkeypatch.setattr("astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
+        monkeypatch.setattr(
+            "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
+        )
+
+        result = cluster_start_payload(max_workers=2, min_workers=0, cores=4, ram=32)
+        assert result.get("recycled_manager") is True
+        assert "restart_manager" not in result
+        assert "as-1" in destroyed
+        assert "old-mgr" in destroyed
+        assert created and created[0]["name"] == "raymgr"
 
 
 class TestClusterStopTeardown:
@@ -755,6 +850,12 @@ class TestClusterStopTeardown:
                 destroyed.append(session_id)
                 return True
 
+            def list_headless_sessions(self, **kwargs):
+                return [{"id": "as-9", "status": "Running", "name": "ray-as-x-1"}]
+
+            def session_failure_detail(self, session_id: str):
+                return None
+
         client = _FakeManagerClient()
         monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
         monkeypatch.setattr("astroai_workload.cli._manager_client", lambda addr=None: client)
@@ -762,8 +863,9 @@ class TestClusterStopTeardown:
         result = cluster_stop_payload()
         assert result["stopped_cluster"] is True
         assert result["destroyed_manager"] is True
+        assert result["destroyed_autoscaler_workers"] == ["as-9"]
         assert result["cleared_state"] == 1
-        assert destroyed == ["sess-1"]
+        assert destroyed == ["as-9", "sess-1"]
         assert client.stop_calls == 1
         assert not url_file.exists()
 

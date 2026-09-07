@@ -325,6 +325,10 @@ def stop_cluster(
 ) -> ClusterState | None:
     state = store.load()
     if not state:
+        # Still reap Ray-autoscaler sessions even with an empty state store.
+        from astroai_workload.autoscaler import destroy_autoscaler_workers
+
+        destroy_autoscaler_workers(canfar)
         return None
 
     state.phase = "Stopping"
@@ -335,6 +339,11 @@ def stop_cluster(
     _archive_worker_logs(canfar=canfar, store=store, state=state)
 
     destroy_all_workers(canfar=canfar, store=store, include_terminal=True)
+    from astroai_workload.autoscaler import destroy_autoscaler_workers
+
+    destroy_autoscaler_workers(canfar, cluster_name=state.cluster_id)
+    # Also sweep any leftover prefix in case cluster_id naming drifted.
+    destroy_autoscaler_workers(canfar)
     state = store.load() or state
 
     deadline = time.monotonic() + wait_timeout

@@ -85,6 +85,7 @@ def _tool_cluster_start(args: dict[str, Any]) -> dict[str, Any]:
         cores=int(args.get("cores", 1)),
         ram=int(args.get("ram", 4)),
         gpus=int(args.get("gpus", 0)),
+        idle_timeout_minutes=int(args.get("idle_timeout_minutes", 5)),
         timeout=int(args.get("timeout", 1800)),
     )
 

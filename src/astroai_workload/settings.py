@@ -80,7 +80,11 @@ def manager_pod_ip() -> str:
             return ip
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired, IndexError):
         pass
-    return socket.gethostbyname(socket.gethostname())
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except OSError:
+        # Laptop / sandboxed hosts often have no resolvable hostname.
+        return "127.0.0.1"
 
 
 def ray_probe_ports() -> str:
