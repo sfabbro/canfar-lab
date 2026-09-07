@@ -771,9 +771,7 @@ class TestClusterStartAutoscaling:
             lambda: "https://mgr/dashboard",
         )
         monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
-        monkeypatch.setattr(
-            "astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0
-        )
+        monkeypatch.setattr("astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
         monkeypatch.setattr(
             "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
         )
@@ -815,9 +813,7 @@ class TestClusterStartAutoscaling:
             lambda: "https://mgr/dashboard",
         )
         monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
-        monkeypatch.setattr(
-            "astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0
-        )
+        monkeypatch.setattr("astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
         monkeypatch.setattr(
             "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
         )

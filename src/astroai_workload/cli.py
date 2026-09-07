@@ -632,10 +632,7 @@ def _cluster_start_locked(
         # (cannot verify the live manager matches — common after hub starts).
         needs_recycle = bool(
             existing_manager
-            and (
-                previous is None
-                or any(previous.get(k) != requested[k] for k in requested)
-            )
+            and (previous is None or any(previous.get(k) != requested[k] for k in requested))
         )
         if needs_recycle:
             destroy_autoscaler_workers(ops)

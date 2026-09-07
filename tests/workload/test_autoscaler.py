@@ -431,9 +431,7 @@ def test_write_manager_autoscaling_env_pythonpath(
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("ASTROAI_WORKLOAD_SRC", "/arc/projects/hats/zscrape/src/canfar-lab")
-    path = write_manager_autoscaling_env(
-        max_workers=3, cores=2, ram_gb=8, idle_timeout_minutes=2
-    )
+    path = write_manager_autoscaling_env(max_workers=3, cores=2, ram_gb=8, idle_timeout_minutes=2)
     text = path.read_text()
     assert "PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
     assert "ASTROAI_LAB_PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
