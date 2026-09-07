@@ -90,6 +90,9 @@ def resolve_dashboard_url(
     persisted = read_persisted_connect_url()
     if not persisted:
         return None
+    if not live:
+        # Shell profile / env export: trust persist without canfar ps or HTTP probes.
+        return jobs_url_from_connect(persisted)
     if _persisted_connect_is_usable(persisted, manager_id=manager_id):
         return jobs_url_from_connect(persisted)
     clear_persisted_connect_urls()

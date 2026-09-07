@@ -53,7 +53,7 @@ def test_resolve_jobs_address_prefers_env(monkeypatch) -> None:
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
     monkeypatch.setattr(
         "astroai_workload.dashboard._live_manager_connect",
-        lambda: (None, False),
+        lambda: (None, False, None),
     )
     monkeypatch.setattr(
         "astroai_workload.dashboard.read_persisted_connect_url",
@@ -70,7 +70,7 @@ def test_resolve_jobs_address_discovers_live_manager(monkeypatch) -> None:
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
     monkeypatch.setattr(
         "astroai_workload.dashboard._live_manager_connect",
-        lambda: ("https://canfar.net/session/contrib/live", True),
+        lambda: ("https://canfar.net/session/contrib/live", True, "live"),
     )
     assert resolve_jobs_address() == "https://canfar.net/session/contrib/live/dashboard"
 
