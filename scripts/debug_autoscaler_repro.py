@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reproduce suspected bugs in the new canfar-lab Ray autoscaler code."""
+
 from __future__ import annotations
 
 import os
@@ -31,12 +32,21 @@ sys.modules.setdefault("ray.autoscaler", _ray_autoscaler)
 sys.modules.setdefault("ray.autoscaler.node_provider", _ray_np)
 
 os.environ["DEBUG_RUN_ID"] = "pre"
-sys.path.insert(0, str(Path("/scratch/src/canfar-lab/src")))
+# Prefer an installed editable package; fall back to a session checkout path.
+_src = Path(__file__).resolve().parents[1] / "src"
+if _src.is_dir():
+    sys.path.insert(0, str(_src))
 
-from astroai_workload.autoscaler import CanfarNodeProvider, _session_age_seconds
-from astroai_workload.dashboard import _probe_manager_url, resolve_dashboard_url, persist_connect_url
-from astroai_workload.cli import cluster_start_payload
-from astroai_workload.autoscaler import write_manager_autoscaling_env
+from astroai_workload import canfar_ops as cops  # noqa: E402
+from astroai_workload import cli  # noqa: E402
+from astroai_workload import dashboard as dash  # noqa: E402
+from astroai_workload.autoscaler import (  # noqa: E402
+    CanfarNodeProvider,
+    _session_age_seconds,
+    write_manager_autoscaling_env,
+)
+from astroai_workload.cli import cluster_start_payload  # noqa: E402
+from astroai_workload.dashboard import _probe_manager_url  # noqa: E402
 
 
 def _provider(**cfg):
@@ -131,14 +141,10 @@ class _Client:
         return {"cluster": {"phase": "Running"}, "joined_workers": 0}
 
 
-import astroai_workload.canfar_ops as cops
-import astroai_workload.dashboard as dash
-import astroai_workload.cli as cli
-
-cops.CanfarOps = _Ops  # type: ignore
-dash.resolve_dashboard_url = lambda: "https://mgr/dashboard"  # type: ignore
-dash.persist_connect_url = lambda *a, **k: None  # type: ignore
-cli._manager_client = lambda base: _Client()  # type: ignore
+cops.CanfarOps = _Ops  # type: ignore[misc, assignment]
+dash.resolve_dashboard_url = lambda: "https://mgr/dashboard"  # type: ignore[assignment]
+dash.persist_connect_url = lambda *a, **k: None  # type: ignore[assignment]
+cli._manager_client = lambda base: _Client()  # type: ignore[attr-defined]
 
 result = cluster_start_payload(max_workers=2, min_workers=0, cores=8, ram=64)
 print(

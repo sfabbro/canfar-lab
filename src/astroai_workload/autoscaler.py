@@ -30,6 +30,7 @@ asynchronous Skaha startup is handled natively.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import threading
@@ -153,9 +154,7 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
 
     def _list_autoscaler_sessions(self) -> list[dict[str, Any]]:
         """Non-terminal listing; raises on CANFAR list failure (fail closed)."""
-        return list(
-            self._ops.list_headless_sessions(name_prefix=f"ray-as-{self.cluster_name}")
-        )
+        return list(self._ops.list_headless_sessions(name_prefix=f"ray-as-{self.cluster_name}"))
 
     def _count_live_workers(self, rows: list[dict[str, Any]] | None = None) -> int:
         if rows is None:
@@ -237,9 +236,7 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
         try:
             rows = self._list_autoscaler_sessions()
         except Exception as exc:  # noqa: BLE001 — fail closed on catalog errors
-            logger.error(
-                "Refusing create_node: list_headless_sessions failed (%s)", exc
-            )
+            logger.error("Refusing create_node: list_headless_sessions failed (%s)", exc)
             raise RuntimeError(
                 f"Cannot list autoscaler sessions; refusing create (fail closed): {exc}"
             ) from exc
@@ -319,10 +316,14 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
             rows = self._list_autoscaler_sessions()
         except Exception as exc:  # noqa: BLE001 — return head-only on list failure
             logger.error("non_terminated_nodes list failed (%s); returning head only", exc)
-            return [_HEAD_NODE_ID] if not tag_filters else (
+            return (
                 [_HEAD_NODE_ID]
-                if _tags_match(self.node_tags(_HEAD_NODE_ID), tag_filters)
-                else []
+                if not tag_filters
+                else (
+                    [_HEAD_NODE_ID]
+                    if _tags_match(self.node_tags(_HEAD_NODE_ID), tag_filters)
+                    else []
+                )
             )
         for row in rows:
             sid = str(row.get("id") or "")
@@ -651,10 +652,8 @@ def _destroy_session_with_retries(ops: CanfarOps, session_id: str) -> None:
         if attempt < _DESTROY_RETRIES:
             time.sleep(_DESTROY_RETRY_SLEEP_S)
     status = "Unknown"
-    try:
+    with contextlib.suppress(Exception):
         status = ops.session_status(session_id)
-    except Exception:  # noqa: BLE001
-        pass
     if status in _TERMINAL_SESSION_STATUSES:
         return
     raise RuntimeError(
