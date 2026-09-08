@@ -67,7 +67,30 @@ def test_path_lock_breaks_stale_lock_from_dead_pid(tmp_path: Path) -> None:
         pass
 
 
+def test_path_lock_other_host_not_stale_by_pid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cross-pod locks on shared home must not look dead via local os.kill."""
+    import time
+
+    from astroai_lab.core import pathlock
+
+    monkeypatch.setattr(pathlock, "_hostname", lambda: "pod-a")
+    lock = tmp_path / "remote.lock"
+    lock.write_text(f"pod-b 1 {time.time()}\n", encoding="utf-8")
+    with pytest.raises(LabError), path_lock(lock, timeout=0.2):
+        pass
+
+
 def test_merge_mcp_config_roundtrip_yaml_and_json(tmp_path: Path) -> None:
+    json_target = McpTarget("cursor", ".cursor/mcp.json")
+    yaml_target = McpTarget("hermes", ".hermes/config.yaml", key="extensions", fmt="yaml")
+    jpath = tmp_path / json_target.relpath
+    ypath = tmp_path / yaml_target.relpath
+    _write_config(jpath, {"mcpServers": {"a": {"command": "x"}}}, json_target.fmt)
+    _write_config(ypath, {"extensions": {"b": {"command": "y"}}}, yaml_target.fmt)
+    assert _read_config(jpath, json_target.fmt)["mcpServers"]["a"]["command"] == "x"
+    assert _read_config(ypath, yaml_target.fmt)["extensions"]["b"]["command"] == "y"
     json_target = McpTarget("cursor", ".cursor/mcp.json")
     yaml_target = McpTarget("hermes", ".hermes/config.yaml", key="extensions", fmt="yaml")
     jpath = tmp_path / json_target.relpath

@@ -27,14 +27,15 @@ manual migration.
    temp-file + `rename` path, so a crash or concurrent reader never sees a
    torn JSON/YAML/env file.
 2. **One writer at a time.** Mutations of shared home config take an
-   `O_EXCL` lock file with stale-PID recovery:
+   `O_EXCL` lock file recording `HOST PID TIMESTAMP`:
    - agent domain (`install`, `remove`, `update`, `setup`,
      `plugins install/remove`, `verify --fix`, `verify --clean`, `wipe`):
      `~/.astroai/lab/agent-setup.lock`
    - cluster domain (`cluster start`, `cluster stop`, hub *Start batch
      compute*): `~/.astroai/ray/control.lock`
-   A lock whose recorded PID is dead is broken automatically after the
-   timeout (30 s agent / 120 s cluster). Same-thread nesting is re-entrant
+   A lock is stale when the same-host holder PID is dead, or when the
+   wall-clock age exceeds 10 minutes (cross-pod holders on NFS are never
+   treated as dead via local `os.kill`). Same-thread nesting is re-entrant
    (e.g. wipe → remove, update → plugins).
 3. **Reads are always lock-free** — `status`, `cluster status`,
    `env export`, dashboard URL resolution never block.

@@ -69,6 +69,27 @@ def relocate_agent_runtime(
         src = home / rel
         dst = data_root / rel.replace(".", "_", 1)
         if src.is_symlink():
+            try:
+                target = src.resolve(strict=False)
+            except OSError:
+                target = None
+            # Recreate when the link is dangling or points outside this session.
+            under_data = False
+            if target is not None:
+                try:
+                    under_data = target == data_root or data_root in target.parents
+                except (OSError, ValueError):
+                    under_data = False
+            if under_data and target is not None and target.exists():
+                continue
+            if dry_run:
+                actions.append(f"relink:{rel}")
+                continue
+            src.unlink(missing_ok=True)
+            dst.mkdir(parents=True, exist_ok=True)
+            src.parent.mkdir(parents=True, exist_ok=True)
+            src.symlink_to(dst, target_is_directory=True)
+            actions.append(f"relink:{rel}")
             continue
         if not src.exists():
             if dry_run:

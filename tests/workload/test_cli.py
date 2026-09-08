@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -179,7 +180,9 @@ def test_cluster_start_forwards_autoscaling_options(monkeypatch, tmp_path) -> No
         ["cluster", "start", "--json", "--min-workers", "1", "--max-workers", "4"],
     )
     assert result.exit_code == 0, result.output
-    assert '"autoscaling": true' in result.output
+    payload = json.loads(result.stdout)
+    assert payload["autoscaling"] is True
+    assert "export ASTROAI_RAY_JOBS_ADDRESS" not in result.output
     assert captured["min_workers"] == 1
     assert captured["max_workers"] == 4
 

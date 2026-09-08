@@ -64,6 +64,22 @@ def test_idempotent_second_run(env: Path) -> None:
     assert relocate_agent_runtime(home, data) == []
 
 
+def test_dangling_symlink_is_relinked(env: Path) -> None:
+    home, data = env
+    relocate_agent_runtime(home, data)
+    link = home / ".claude" / "projects"
+    assert link.is_symlink()
+    # Simulate prior session scratch gone / wrong target.
+    link.unlink()
+    link.symlink_to(home / "missing-scratch" / "projects", target_is_directory=True)
+    actions = relocate_agent_runtime(home, data)
+    assert any(a.startswith("relink:") for a in actions)
+    assert link.is_symlink()
+    resolved = link.resolve()
+    assert resolved.is_dir()
+    assert data in resolved.parents or resolved == data
+
+
 def test_dry_run_touches_nothing(env: Path) -> None:
     home, data = env
     real = home / ".claude" / "projects"

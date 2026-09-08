@@ -142,6 +142,7 @@ def test_tools_list_cluster_start_schema_is_autoscaling_only() -> None:
     props = start["inputSchema"]["properties"]
     assert props["min_workers"]["default"] == 0
     assert props["max_workers"]["default"] == 8
+    assert "idle_timeout_minutes" in props
     assert "require_preflight" not in props
     assert "autoscaling" not in props
     assert "workers" not in props

@@ -124,6 +124,17 @@ def test_create_node_launches_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
     assert provider.node_tags("sid-1")["ray_node_type_name"] == "ray.worker.default"
 
 
+def test_set_node_tags_merges() -> None:
+    provider = _provider()
+    provider.set_node_tags("n1", {"a": "1", "b": "2"})
+    provider.set_node_tags("n1", {"b": "3", "c": "4"})
+    tags = provider.node_tags("n1")
+    assert tags["a"] == "1"
+    assert tags["b"] == "3"
+    assert tags["c"] == "4"
+    assert tags["ray-node-type"] == "worker"
+
+
 def test_create_node_refuses_at_max_workers(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = _provider(max_workers=2)
     provider._ops.list_headless_sessions = MagicMock(

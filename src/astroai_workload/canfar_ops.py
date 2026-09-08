@@ -198,8 +198,18 @@ class CanfarOps:
     def list_headless_sessions(self, *, name_prefix: str) -> list[dict[str, Any]]:
         # Do not pass view=all: that returns every user's sessions with id/name
         # stripped, so the autoscaler hard-cap cannot see live ray-as-* workers.
+        # Cluster boundary: "ray-as-c1" must not match "ray-as-c10-…". A prefix
+        # that already ends with "-" (e.g. "ray-as-") is used as a startswith.
         rows = self._fresh_session().fetch(kind="headless")
-        return [row for row in rows if str(row.get("name", "")).startswith(name_prefix)]
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            name = str(row.get("name", ""))
+            if name_prefix.endswith("-"):
+                if name.startswith(name_prefix):
+                    out.append(row)
+            elif name == name_prefix or name.startswith(f"{name_prefix}-"):
+                out.append(row)
+        return out
 
     def list_sessions(self) -> list[dict[str, Any]]:
         """All sessions visible to the user (any kind)."""

@@ -89,6 +89,23 @@ _WORKER_TAG_DEFAULTS = {
 }
 
 
+def _autoscaler_worker_prefix(cluster_name: str) -> str:
+    """Name prefix for autoscaler workers of *cluster_name*.
+
+    Names are ``ray-as-{cluster}-{ms}`` capped at 60 chars. Reserve 13 digits
+    for the millisecond token so age parsing and list/destroy prefixes stay
+    aligned when the cluster id is long.
+    """
+    room = 60 - len("ray-as-") - 1 - 13
+    return f"ray-as-{cluster_name[: max(1, room)]}"
+
+
+def _autoscaler_worker_name(cluster_name: str, *, ms: int | None = None) -> str:
+    ms_s = str(int(time.time() * 1000) if ms is None else ms)
+    room = 60 - len("ray-as-") - 1 - len(ms_s)
+    return f"ray-as-{cluster_name[: max(1, room)]}-{ms_s}"
+
+
 def _default_worker_image() -> str:
     tag = os.environ.get("RAY_IMAGE_TAG", os.environ.get("BUILD_TAG", "latest"))
     registry = os.environ.get("REGISTRY", "images.canfar.net")
@@ -154,7 +171,11 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
 
     def _list_autoscaler_sessions(self) -> list[dict[str, Any]]:
         """Non-terminal listing; raises on CANFAR list failure (fail closed)."""
-        return list(self._ops.list_headless_sessions(name_prefix=f"ray-as-{self.cluster_name}"))
+        return list(
+            self._ops.list_headless_sessions(
+                name_prefix=_autoscaler_worker_prefix(self.cluster_name)
+            )
+        )
 
     def _count_live_workers(self, rows: list[dict[str, Any]] | None = None) -> int:
         if rows is None:
@@ -272,7 +293,7 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
         # orphan GC (which owns ``ray-w-``/``ray-retry-``/``ray-preflight-``)
         # never destroys autoscaler nodes, and Ray's autoscaler never adopts
         # manager-created workers (non_terminated_nodes matches this prefix).
-        name = f"ray-as-{self.cluster_name}-{int(time.time() * 1000)}"[:60]
+        name = _autoscaler_worker_name(self.cluster_name)
         try:
             launches = self._ops.create_headless(
                 name=name,
@@ -392,7 +413,8 @@ class CanfarNodeProvider(_RayNodeProvider):  # type: ignore[misc,valid-type]
         if node_id == _HEAD_NODE_ID:
             return
         with self._lock:
-            self._tags[node_id] = dict(tags or {})
+            cur = self._tags.setdefault(node_id, {})
+            cur.update(tags or {})
 
     def internal_ip(self, node_id: str) -> str:
         if node_id == _HEAD_NODE_ID:
@@ -620,7 +642,7 @@ def destroy_autoscaler_workers(
     ``ray-w-*`` workers tracked in the state store. Returns destroyed session IDs.
     """
     ops = ops or CanfarOps()
-    prefix = f"ray-as-{cluster_name}" if cluster_name else "ray-as-"
+    prefix = _autoscaler_worker_prefix(cluster_name) if cluster_name else "ray-as-"
     destroyed: list[str] = []
     try:
         rows = ops.list_headless_sessions(name_prefix=prefix)

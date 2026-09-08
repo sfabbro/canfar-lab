@@ -201,6 +201,11 @@ TOOLS: list[dict[str, Any]] = [
                 "cores": {"type": "integer", "description": "CPUs per worker.", "default": 1},
                 "ram": {"type": "integer", "description": "RAM GiB per worker.", "default": 4},
                 "gpus": {"type": "integer", "description": "GPUs per worker.", "default": 0},
+                "idle_timeout_minutes": {
+                    "type": "integer",
+                    "description": "Minutes before idle workers are stopped.",
+                    "default": 5,
+                },
                 "timeout": {
                     "type": "integer",
                     "description": "Wait timeout (seconds).",

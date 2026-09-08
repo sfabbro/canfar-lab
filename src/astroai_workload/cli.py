@@ -767,8 +767,8 @@ def cluster_cmd_start(
                 "this manager was already running — stop it and re-run "
                 "`cluster start` if jobs do not scale"
             )
-    # Hint for the caller's shell (a CLI cannot export into its parent).
-    print(f"export ASTROAI_RAY_JOBS_ADDRESS={result['jobs_address']}")
+        # Hint for the caller's shell (a CLI cannot export into its parent).
+        print(f"export ASTROAI_RAY_JOBS_ADDRESS={shlex.quote(str(result['jobs_address']))}")
     raise typer.Exit(0)
 
 
