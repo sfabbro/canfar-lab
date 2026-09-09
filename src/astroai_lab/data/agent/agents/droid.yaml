@@ -1,0 +1,30 @@
+# Installable via: astroai agent install droid
+id: droid
+name: Factory Droid
+homepage: https://factory.ai
+summary: Factory's Droid coding agent CLI (interactive + droid exec)
+binary: droid
+tags:
+  - agent
+  - cli
+install:
+  method: curl
+  source: https://app.factory.ai/cli
+  post_binary_paths:
+    - ~/.local/bin/droid
+config:
+  path: ~/.factory/settings.json
+  format: json
+  provider_key: FACTORY_API_KEY
+  markers:
+    - ~/.factory
+verify:
+  - droid --version
+plugins:
+  - skill
+  - mcp
+  - config
+  - addon
+notes: >-
+  Settings ~/.factory/settings.json; auth FACTORY_API_KEY or browser login.
+  npm alternative: npm install -g droid.

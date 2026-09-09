@@ -1,0 +1,28 @@
+# Installable via: astroai agent install augment
+# Upstream CLI binary is `auggie` (Augment Code).
+id: augment
+name: Augment
+homepage: https://www.augmentcode.com/
+summary: "Augment Code agentic CLI (binary name: auggie)"
+binary: auggie
+tags:
+  - agent
+  - cli
+install:
+  method: npm
+  source: "@augmentcode/auggie@latest"
+config:
+  path: ~/.augment/settings.json
+  format: json
+  markers:
+    - ~/.augment
+verify:
+  - auggie --version
+plugins:
+  - skill
+  - mcp
+  - config
+  - addon
+notes: >-
+  Upstream binary is `auggie`. Settings ~/.augment/settings.json; run
+  `auggie login` (or AUGMENT_SESSION_AUTH). Requires Node 20+.

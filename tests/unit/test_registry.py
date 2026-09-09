@@ -614,7 +614,7 @@ def test_cli_agent_list_includes_new_agents() -> None:
     assert result.exit_code in (0, 1)
     data = json.loads(result.stdout)
     ids = {item["id"] for item in data["agents"]}
-    assert {"hermes", "openclaw", "zcode", "omp"} <= ids
+    assert {"hermes", "openclaw", "zcode", "omp", "junie", "droid", "augment"} <= ids
 
 
 def test_cli_agent_install_unknown() -> None:

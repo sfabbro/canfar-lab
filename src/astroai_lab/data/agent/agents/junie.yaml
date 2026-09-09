@@ -1,0 +1,29 @@
+# Installable via: astroai agent install junie
+id: junie
+name: Junie
+homepage: https://junie.jetbrains.com/
+summary: JetBrains coding agent CLI (any model you choose)
+binary: junie
+tags:
+  - agent
+  - cli
+install:
+  method: curl
+  source: https://junie.jetbrains.com/install.sh
+  post_binary_paths:
+    - ~/.local/bin/junie
+config:
+  path: ~/.junie/config.json
+  format: json
+  markers:
+    - ~/.junie
+verify:
+  - junie --version
+plugins:
+  - skill
+  - mcp
+  - config
+  - addon
+notes: >-
+  Config ~/.junie/config.json; auth via JetBrains account, Junie API key
+  (--auth), or BYOK. npm alternative: @jetbrains/junie.
