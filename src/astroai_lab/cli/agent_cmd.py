@@ -35,6 +35,7 @@ agent_app = typer.Typer(
         "  config        read/write that agent's settings file on $HOME\n"
         "  update        refresh CLI and bundled agent configs\n"
         "  verify        health check (--fix, --clean)\n"
+        "  env           shared credential state (--with-dsh)\n"
         "  plugins       MCP/rules/tools (Kind/On/Def/Agents; --description)"
     ),
 )
@@ -810,6 +811,43 @@ def agent_config_cmd(
         else:
             ui.print_hint(f"{a['key']}: {a['detail']}")
     ui.print_ok("Config updated")
+
+
+@agent_app.command("env")
+def agent_env_cmd(
+    ctx: typer.Context,
+    with_dsh: Annotated[
+        bool,
+        typer.Option("--with-dsh", help="Include dsh provider routes (never prints secrets)."),
+    ] = False,
+) -> None:
+    """Show shared agent credential state (presence only, never values)."""
+    from astroai_lab.agent import review_bench as _rb
+    from astroai_lab.agent.setup import discover_openrouter_key, openrouter_dotenv_path
+
+    opts = get_opts(ctx)
+    home = Path.home()
+    dotenv = openrouter_dotenv_path(home)
+    payload: dict[str, object] = {
+        "dotenv": str(dotenv),
+        "dotenv_mode": oct(dotenv.stat().st_mode & 0o777) if dotenv.is_file() else None,
+        "openrouter_key": bool(discover_openrouter_key(home)),
+    }
+    if with_dsh:
+        keys = _rb.discover_dsh_keys(home)
+        payload["dsh_keys"] = sorted(keys)
+        payload["dsh_route"] = _rb.ensure_dsh_settings(home, dry_run=True)
+    if opts.json:
+        ui.print_json(payload)
+        return
+    ui.print_hint(f"shared dotenv — {dotenv} ({payload['dotenv_mode']})")
+    ui.print_ok(f"OPENROUTER_API_KEY present: {payload['openrouter_key']}")
+    if with_dsh:
+        names = payload["dsh_keys"]
+        assert isinstance(names, list)
+        ui.print_ok(f"dsh keys present: {', '.join(names) if names else '(none)'}")
+        ui.print_ok(f"dsh route: {payload['dsh_route']}")
+        ui.print_hint("Persist with: astroai agent setup (writes .env 0600 + ~/.dsh/settings.yaml)")
 
 
 @agent_app.command("verify")
