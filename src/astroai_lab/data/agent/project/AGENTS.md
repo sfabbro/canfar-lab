@@ -24,15 +24,30 @@ Skills: `npx skills add …` (not managed by AstroAI)
 ## This repo
 
 ```bash
-pixi install    # or uv sync — env lives under $WORK, not $HOME
-pixi run …      # or uv run …
+pixi install    # env under $WORK — never $HOME/.local
+pixi run …      # prefer over bare python3
 astroai save         # before session ends — code on $WORK is ephemeral
 astroai cluster start
 astroai run train.py --cpus 2
 ```
 
+**Never** `pip install --user` or install into `$HOME/.local` (`/arc/home` is small and shared). Headless: `PYTHONNOUSERSITE=1` and `unset PYTHONPATH`.
+
 Pin Python deps in **pixi.toml / uv.lock** here — not in the image platform venv.
 Platform CLIs (`canfar`, `cadcget`, `astroai`) live in `/opt/astroai/venv/cadc`; upgrade this session with `upgrade-cadc-tools.sh` if needed.
+
+### CANFAR quick map
+
+| Thing | Where / how |
+|-------|-------------|
+| Code + pixi env | `${WORK}` (often under `$SCRATCH/src`) |
+| Big temp data | `/scratch` (wiped when session ends) |
+| Shared project data | `/arc/projects/<group>` |
+| Home (tiny) | `/arc/home/$USER` — config only |
+| Quotas / projects | `astroai status --json`, `df -h` |
+| Session CPU/RAM | `nproc`, `free -h`, `canfar info` |
+| Headless batch | `canfar create headless …` + `PYTHONNOUSERSITE=1` |
+| Contributed web UI port | **5000** |
 
 Search: `rg`, `fd`, `sg` (`astroai agent plugins install ast-grep-cli`). View files: `peek <path>` or `bat`/`less`.
 Help: `astroai help`, `astroai cluster status`, `astroai status --json`.
