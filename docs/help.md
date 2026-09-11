@@ -27,10 +27,13 @@ Saves default to **`~/.astroai/lab/saves/`**.
 ## Project env
 
 ```text
-1. astroai resume mylab     # or init / clone
+1. astroai resume mylab     # or init / clone  (code under $WORK = /scratch/src)
 2. cd $WORK/mylab && pixi run …
-3. astroai save             # lockfile snapshot to /arc
+3. astroai save             # lockfile snapshot to /arc (deps, not source)
 ```
+
+Refresh source from your fork: `astroai clone mylab --update` (ff-only; prints SHA).
+See USAGE.md → Code propagation (sessions + jobs).
 
 ## Ray jobs
 

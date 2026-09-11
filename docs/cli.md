@@ -36,19 +36,29 @@ astroai init mylab --dir ~/src
 
 ### `astroai clone REPO [REPO…]`
 
-Clone via `gh` and install dependencies. Several repos clone one after another
-into `$SRCDIR/<name>`. `--dir` sets the parent source directory (any number of
-repos). `--to` is the exact destination for one repo only. A name without `/`
-is tried as `$github-user/name`, then `astroai/name`.
+Clone via `gh` into `$WORK` (on CANFAR: `$SCRATCH/src`) and install dependencies.
+Bare names prefer **your GitHub user fork**, then `astroai/`. Several repos clone
+one after another.
 
 ```bash
 astroai clone myproject
-astroai clone owner/repo
-astroai clone owner/a owner/b
+astroai clone sfabbro/torchsky
+astroai clone sfabbro/torchsky --update          # fetch+ff origin tip if dest exists
+astroai clone sfabbro/torchsky --ref wip/topic   # or a commit SHA
+astroai clone sfabbro/torchsky --update --ref abc1234
 astroai clone --from-env ml-base owner/repo
 astroai clone owner/repo --to $SRCDIR/custom
+```
+
+`--update` is how jobs/sessions **securely refresh** to the latest pushed tip on
+`origin` (fast-forward only; refuses dirty trees unless `--force`). Prints the
+short HEAD SHA after clone/update. Forks get an `upstream` remote when GitHub
+reports a parent. `--dir` sets the parent source directory (any number of
+repos). `--to` is the exact destination for one repo only.
+
+```bash
+astroai clone owner/a owner/b
 astroai clone owner/repo --dir ~/src
-astroai clone owner/a owner/b --dir /srcdir
 astroai clone owner/repo --dir /arc/projects/mygroup
 ```
 

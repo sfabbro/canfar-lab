@@ -26,13 +26,19 @@ Skills: `npx skills add …` (not managed by AstroAI)
 ```bash
 pixi install    # env under $WORK — never $HOME/.local
 pixi run …      # prefer over bare python3
-astroai save         # before session ends — code on $WORK is ephemeral
+git push -u origin HEAD          # before another session/job needs this tip
+astroai save                     # env/lockfiles only — not your .py tree
+astroai clone sfabbro/<repo> --update   # next session: latest fork tip + SHA
 astroai cluster start
 astroai run train.py --cpus 2
 ```
 
-**Never** `pip install --user` or install into `$HOME/.local` (`/arc/home` is small and shared). Headless: `PYTHONNOUSERSITE=1` and `unset PYTHONPATH`.
+**Code home on CANFAR:** `$WORK` → `/scratch/src` (dies with the session).
+Propagation modes: (1) GitHub push/pull via `clone --update` / `--ref`,
+(2) `save`/`resume` for envs, (3) `vos:$USER/astroai/` tarball, (4) 2+3.
+Same-session Ray packages the local tree; other pods need 1–4.
 
+**Never** `pip install --user` or install into `$HOME/.local` (`/arc/home` is small and shared). Headless: `PYTHONNOUSERSITE=1` and `unset PYTHONPATH`.
 Pin Python deps in **pixi.toml / uv.lock** here — not in the image platform venv.
 Platform CLIs (`canfar`, `cadcget`, `astroai`) live in `/opt/astroai/venv/cadc`; upgrade this session with `upgrade-cadc-tools.sh` if needed.
 

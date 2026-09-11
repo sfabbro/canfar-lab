@@ -52,15 +52,49 @@ def test_clone_from_without_env(lab_env: Path) -> None:
     assert result.exit_code == 1
 
 
+def test_clone_update_dry_run(lab_env: Path) -> None:
+    dest = lab_env / "repo"
+    dest.mkdir(parents=True)
+    (dest / ".git").mkdir()
+    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+        result = runner.invoke(
+            app,
+            ["--dry-run", "clone", "org/repo", "--update", "--to", str(dest)],
+        )
+    assert result.exit_code == 0, result.output
+    assert "would update" in result.output
+
+
+def test_clone_exists_hints_update(lab_env: Path) -> None:
+    dest = lab_env / "repo"
+    dest.mkdir(parents=True)
+    with (
+        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("astroai_lab.cli.init_clone_env.resolve_clone_spec", return_value="org/repo"),
+    ):
+        result = runner.invoke(app, ["clone", "org/repo"])
+    assert result.exit_code == 1
+    assert "--update" in result.output
+
+
+def test_clone_force_requires_update(lab_env: Path) -> None:
+    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+        result = runner.invoke(app, ["clone", "org/repo", "--force"])
+    assert result.exit_code == 1
+    assert "--force requires --update" in result.output
+
+
 def test_clone_success(lab_env: Path) -> None:
     with (
         patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
         patch("astroai_lab.utils.subprocess.run") as mock_run,
         patch("astroai_lab.core.project.detect_project", return_value=None),
+        patch("astroai_lab.cli.init_clone_env._finalize_clone", return_value="abc1234"),
     ):
         result = runner.invoke(app, ["clone", "org/repo"])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     mock_run.assert_called_once()
+    assert "abc1234" in result.output
 
 
 def test_clone_two_short_names_are_both_repos(lab_env: Path) -> None:
@@ -108,8 +142,10 @@ def test_clone_dir_dry_run(lab_env: Path, tmp_path: Path) -> None:
             app, ["--dry-run", "clone", "org/alpha", "org/beta", "--dir", str(parent)]
         )
     assert result.exit_code == 0, result.output
-    assert str(parent.resolve() / "alpha") in result.output
-    assert str(parent.resolve() / "beta") in result.output
+    # Rich may wrap long paths; compare without newlines.
+    flat = result.output.replace("\n", "")
+    assert str(parent.resolve() / "alpha") in flat
+    assert str(parent.resolve() / "beta") in flat
     assert parent.is_dir()
 
 
