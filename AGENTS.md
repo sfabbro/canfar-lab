@@ -49,4 +49,20 @@ installs): parent workspace `AGENTS.md` (`~/src/AGENTS.md`).
 - Prefer `pixi run` / `pixi run python` over bare `python3` when Pixi exists.
 - Never `pip install --user` or install into `~/.local` / `$HOME/.local` (esp. CANFAR `/arc/home`).
 - Headless/batch: `export PYTHONNOUSERSITE=1` and `unset PYTHONPATH`.
-- On CANFAR: read skill `canfar-lab-workflow` (mounts, quotas, resources, headless, ports).
+- On CANFAR: code under `$WORK` → `/scratch/src` (session-ephemeral). Prefer
+  `astroai clone <fork> --update` to refresh source; `save`/`resume` are deps only.
+  See `docs/USAGE.md` → Getting code onto jobs; skill `canfar-lab-workflow`.
+
+## Code propagation (jobs + sessions)
+
+On CANFAR, code lives under `$WORK` → **`$SCRATCH/src`** (session-ephemeral).
+Workers do not see another pod's `/scratch`. Pick a mode before jobs:
+
+1. **GitHub push → pull** (default): push fork `origin`, then
+   `astroai clone <fork/repo> --update` (or `--ref <sha>`). Prints HEAD SHA.
+2. **`astroai save` / `resume`**: lockfiles / env only — **not** source.
+3. **VOSpace tarball** under `vos:$USER/astroai/` (pack deps yourself; no CLI yet).
+4. **2 + 3** for reproducible headless (env snapshot + code blob).
+
+Same-session Ray: `astroai run` packages local `working_dir`. Details:
+`docs/USAGE.md` § Code propagation.

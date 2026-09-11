@@ -75,6 +75,44 @@ uv sync --all-extras && uv run astroai --help
 
 ---
 
+## Code propagation (sessions + jobs)
+
+On CANFAR, **local code always lives under `$WORK`**, which defaults to
+**`$SCRATCH/src`** (same as `$SRCDIR`). That tree survives container OOM
+restarts but **dies with the session**. Never put project code in
+`/arc/home` or `$HOME/.local`.
+
+Workers and new pods **do not** see another pod's `/scratch`. Pick an
+explicit propagation mode before `astroai run` / headless jobs:
+
+| Mode | What moves | When to use | How |
+|------|------------|-------------|-----|
+| **1. GitHub push → pull** | Source only (deps via pixi/uv on install) | Default for WIP on your fork | Push to `origin` (sfabbro fork). On the job/session: `astroai clone <fork/repo> --update` (ff-only to latest origin tip) or `--ref <branch\|sha>` to pin. Print SHA is the receipt. |
+| **2. `astroai save` / `resume`** | **Lockfiles (+ optional `.pixi`/`.venv` with `--full`)** — **not** your `.py` tree | Warm envs across sessions | `astroai save mylab [--full]`; next session `astroai resume mylab` then still need mode 1 (or shared `/arc`) for source. |
+| **3. VOSpace tarball** | Source **and** usually need deps inside or a matching save | Share a frozen tree without git, or headless cold start | Pack under `vos:$USER/astroai/<name>.tar.zst` (or `arc:`), unpack into `$WORK` on the worker. You own the layout; CLI does not auto-pack yet. |
+| **4. Save + VOSpace (2+3)** | Env snapshot + code tarball | Reproducible headless: same env + same source blob | `astroai save mylab --full` to home/project; upload code tarball to `vos:$USER/astroai/`; job restores both into `$WORK`. |
+
+**Same-session Ray jobs:** `astroai run train.py` packages the script's
+directory as Ray `working_dir` (local tree). Still push/save before the
+session ends if you need the work later.
+
+**Secure "latest fork" (mode 1):** always `git push origin` from the
+interactive session, then on the consumer `astroai clone … --update`
+(refuses dirty trees unless `--force`). Prefer `--ref <sha>` for pinned
+science runs.
+
+```bash
+# Interactive session
+cd "$WORK/torchsky"          # → /scratch/src/torchsky on CANFAR
+git push -u origin HEAD
+astroai save torchsky        # env only
+
+# New session / headless prelude
+astroai clone sfabbro/torchsky --update          # latest origin tip + SHA printed
+# or: astroai clone sfabbro/torchsky --ref abc1234
+pixi run python train.py
+```
+
 ## First project
 
 ```bash
@@ -91,13 +129,15 @@ Clone (needs `gh auth login` once):
 astroai clone owner/repo
 astroai clone owner/a owner/b
 astroai clone --from-env mylab owner/repo
-astroai clone owner/repo --dir ~/src          # persist on /arc/home
-astroai clone owner/repo --dir /srcdir        # container overlay (OOM-fragile)
+astroai clone owner/repo --update              # refresh existing checkout
+astroai clone owner/repo --ref wip/topic
+astroai clone owner/repo --dir ~/src           # persist on /arc/home
 astroai clone owner/repo --dir /arc/projects/mygroup
 ```
 
 `save` writes lockfiles to `~/.astroai/lab/saves/` on `/arc/home`. The next
-session `resume`s that snapshot.
+session `resume`s that snapshot — **not** your source tree (see Code
+propagation above).
 
 ---
 

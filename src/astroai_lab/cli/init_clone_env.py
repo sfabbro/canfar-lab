@@ -72,7 +72,7 @@ def _src_dir(path: Path) -> Path:
     if not ensure_writable_dir(path):
         raise LabError(
             f"Source directory is not writable: {path}",
-            hint="Pick a path you can write: $HOME/src, /srcdir, or /arc/projects/<group>",
+            hint="On CANFAR use $SCRATCH/src ($WORK). Else $HOME/src or /arc/projects/<group>.",
         )
     return path.resolve()
 
@@ -116,6 +116,43 @@ def _init_impl(
         ui.print_hint(f"  `gh repo create {name} --private --source=. --push`")
 
 
+def _gh_fork_parent(spec: str) -> str | None:
+    """Return parent owner/name when ``spec`` is a GitHub fork, else None."""
+    try:
+        parent = run_capture(
+            [
+                "gh",
+                "repo",
+                "view",
+                spec,
+                "--json",
+                "isFork,parent",
+                "-q",
+                'if .isFork then .parent.nameWithOwner else empty end',
+            ]
+        ).strip()
+    except LabError:
+        return None
+    return parent or None
+
+
+def _finalize_clone(
+    dest: Path,
+    repo: str,
+    *,
+    ref: str | None,
+) -> str:
+    """Checkout ``ref`` if given, wire upstream for forks, return short HEAD SHA."""
+    from astroai_lab.core.git import git_ensure_upstream, git_head_sha, git_sync_from_origin
+
+    if ref:
+        git_sync_from_origin(dest, ref=ref, force=True)
+    parent = _gh_fork_parent(repo)
+    if parent:
+        git_ensure_upstream(dest, parent)
+    return git_head_sha(dest)
+
+
 def register(app: typer.Typer) -> None:
     @app.command("init")
     def init_cmd(
@@ -156,23 +193,47 @@ def register(app: typer.Typer) -> None:
             Path | None,
             typer.Option(
                 "--dir",
-                help="Source directory (parent for clones; default: $SRCDIR).",
+                help="Source directory (parent for clones; default: $SRCDIR / $WORK).",
             ),
         ] = None,
         from_env: Annotated[str | None, typer.Option("--from-env")] = None,
         from_path: Annotated[Path | None, typer.Option("--from")] = None,
+        update: Annotated[
+            bool,
+            typer.Option(
+                "--update",
+                help="If the dest already exists, fetch+ff from origin (latest fork tip).",
+            ),
+        ] = False,
+        ref: Annotated[
+            str | None,
+            typer.Option(
+                "--ref",
+                help="Branch, tag, or commit SHA to check out after clone/update.",
+            ),
+        ] = None,
+        force: Annotated[
+            bool,
+            typer.Option(
+                "--force",
+                help="With --update, hard-reset a dirty tree to the target tip.",
+            ),
+        ] = False,
     ) -> None:
-        """Clone GitHub repo(s) and install dependencies.
+        """Clone GitHub repo(s) into $WORK ($SCRATCH/src on CANFAR) and install deps.
+
+        Prefers your GitHub user fork when given a bare name. Use ``--update`` so
+        jobs/sessions refresh to the latest pushed tip on origin. ``--ref`` pins a
+        branch/SHA. Prints the short HEAD SHA so job scripts can record what ran.
 
         Examples:
             astroai clone myproject
-            astroai clone myorg/myproject
-            astroai clone owner/a owner/b
+            astroai clone sfabbro/torchsky --update
+            astroai clone sfabbro/torchsky --ref wip/topic
             astroai clone --from-env ml-base myorg/myproject
-            astroai clone owner/repo --to $SRCDIR/custom
-            astroai clone owner/repo --dir ~/src
-            astroai clone owner/a owner/b --dir /srcdir
+            astroai clone owner/repo --to $WORK/custom
         """
+        from astroai_lab.core.git import git_ensure_upstream, git_head_sha, git_sync_from_origin
         from astroai_lab.core.project import (
             bootstrap_lock,
             detect_project,
@@ -190,6 +251,7 @@ def register(app: typer.Typer) -> None:
             ui.print_error("clone needs a repo name")
             ui.print_hint("  astroai clone myproject")
             ui.print_hint("  astroai clone owner/repo")
+            ui.print_hint("  astroai clone myproject --update")
             raise typer.Exit(1)
         if to is not None and src_dir is not None:
             ui.print_error("--dir and --to cannot be combined")
@@ -201,6 +263,9 @@ def register(app: typer.Typer) -> None:
         if from_path and not from_env:
             ui.print_error("--from requires --from-env <name>")
             raise typer.Exit(1)
+        if force and not update:
+            ui.print_error("--force requires --update")
+            raise typer.Exit(1)
         if shutil.which("gh") is None:
             ui.print_error("gh required.\n  `gh auth login`")
             raise typer.Exit(1)
@@ -210,6 +275,7 @@ def register(app: typer.Typer) -> None:
         except LabError as exc:
             ui.print_error(str(exc))
             raise typer.Exit(1) from exc
+        ui.print_hint(f"  work dir: {parent}")
         jobs: list[tuple[str, Path]] = []
         for raw in names:
             try:
@@ -235,15 +301,34 @@ def register(app: typer.Typer) -> None:
 
         for repo, dest in jobs:
             if dest.exists():
-                ui.print_error(f"Target already exists: {dest}")
-                failed += 1
+                if not update:
+                    ui.print_error(f"Target already exists: {dest}")
+                    ui.print_hint("  astroai clone … --update   # fetch+ff latest from origin")
+                    failed += 1
+                    continue
+                if opts.dry_run:
+                    extra = f" ref={ref}" if ref else ""
+                    ui.print_ok(f"dry-run: would update {repo} @ {dest}{extra}")
+                    continue
+                try:
+                    with ui.progress_task(f"Updating {repo}...", quiet=opts.quiet):
+                        sha = git_sync_from_origin(dest, ref=ref, force=force)
+                        parent_repo = _gh_fork_parent(repo)
+                        if parent_repo:
+                            git_ensure_upstream(dest, parent_repo)
+                    ui.print_ok(f"Updated: `cd {dest}` @ {sha} ({repo})")
+                except LabError as exc:
+                    ui.print_error(str(exc))
+                    failed += 1
                 continue
             if opts.dry_run:
-                ui.print_ok(f"dry-run: would clone {repo} -> {dest}")
+                extra = f" ref={ref}" if ref else ""
+                ui.print_ok(f"dry-run: would clone {repo} -> {dest}{extra}")
                 continue
             try:
                 with ui.progress_task(f"Cloning {repo}...", quiet=opts.quiet):
                     run(["gh", "repo", "clone", repo, str(dest)])
+                    sha = _finalize_clone(dest, repo, ref=ref)
                 kind = detect_project(dest)
                 bootstrap = bool(save_dir and kind and bootstrap_lock(save_dir, dest))
                 if kind:
@@ -253,7 +338,8 @@ def register(app: typer.Typer) -> None:
                 ui.print_error(str(exc))
                 failed += 1
                 continue
-            ui.print_ok(f"Ready: `cd {dest}`")
+            sha = sha or git_head_sha(dest)
+            ui.print_ok(f"Ready: `cd {dest}` @ {sha} ({repo})")
         if failed:
             raise typer.Exit(1)
 
