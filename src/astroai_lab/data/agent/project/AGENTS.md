@@ -39,6 +39,7 @@ Propagation modes: (1) GitHub push/pull via `clone --update` / `--ref`,
 Same-session Ray packages the local tree; other pods need 1–4.
 
 **Never** `pip install --user` or install into `$HOME/.local` (`/arc/home` is small and shared). Headless: `PYTHONNOUSERSITE=1` and `unset PYTHONPATH`.
+**Session images:** always `images.canfar.net/astroai/*` — never `skaha/*`.
 Pin Python deps in **pixi.toml / uv.lock** here — not in the image platform venv.
 Platform CLIs (`canfar`, `cadcget`, `astroai`) live in `/opt/astroai/venv/cadc`; upgrade this session with `upgrade-cadc-tools.sh` if needed.
 

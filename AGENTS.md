@@ -52,6 +52,7 @@ installs): parent workspace `AGENTS.md` (`~/src/AGENTS.md`).
 - On CANFAR: code under `$WORK` → `/scratch/src` (session-ephemeral). Prefer
   `astroai clone <fork> --update` to refresh source; `save`/`resume` are deps only.
   See `docs/USAGE.md` → Getting code onto jobs; skill `canfar-lab-workflow`.
+- Session images: always `images.canfar.net/astroai/*` — **never** `skaha/*`.
 
 ## Code propagation (jobs + sessions)
 

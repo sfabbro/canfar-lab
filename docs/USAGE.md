@@ -10,7 +10,7 @@ It does project environments (`init` / `save` / `resume`), the Ray cluster
 |------|------|
 | [`canfar`](https://github.com/opencadc/canfar) | Auth, session lifecycle, `canfar data` |
 | CADC clients (`cadcget`, `vcp`, …) | Archive and VOSpace I/O |
-| [Session images](https://github.com/astroai/canfar-containers) | `webterm`, `notebook`, `vscode`, `marimo`, Ray |
+| [Session images](https://github.com/astroai/canfar-containers) | `images.canfar.net/astroai/*` only (`webterm`, `notebook`, `vscode`, `marimo`, Ray) — never `skaha/*` |
 
 | Doc | Scope |
 |-----|--------|
