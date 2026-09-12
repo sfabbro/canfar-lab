@@ -7,16 +7,17 @@ platform; AstroAI is the product surface inside the session.
 
 | Remote | Points at | Use |
 |--------|-----------|-----|
-| `origin` | `sfabbro/canfar-lab` | Push `wip/*` only |
+| `origin` | `sfabbro/canfar-lab` | Push fork `main` |
 | `upstream` | `astroai/canfar-lab` | Sync `main`; PR target |
 
-`main` tracks `upstream/main`. Never force-push `astroai` `main`.
+`main` tracks `upstream/main`. Prefer working and pushing on fork `main`.
+Never force-push `astroai` `main`.
 
 ```bash
 git fetch upstream && git rebase upstream/main
-git checkout -b wip/<topic>
-git push -u origin HEAD
-gh pr create -R astroai/canfar-lab --head sfabbro:$(git branch --show-current)
+# edit on main
+git push origin main
+gh pr create -R astroai/canfar-lab --head sfabbro:main
 ```
 
 ## Environment

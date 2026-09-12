@@ -241,7 +241,7 @@ def register(app: typer.Typer) -> None:
         Examples:
             astroai clone myproject
             astroai clone sfabbro/torchsky --update
-            astroai clone sfabbro/torchsky --ref wip/topic
+            astroai clone sfabbro/torchsky --ref topic
             astroai clone --from-env ml-base myorg/myproject
             astroai clone owner/repo --to $WORK/custom
         """
