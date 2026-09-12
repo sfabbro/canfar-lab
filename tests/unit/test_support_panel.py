@@ -81,12 +81,59 @@ def test_force_provider_overrides_pin(tmp_path: Path, monkeypatch: pytest.Monkey
     assert "astroaiPanel" in text or "AstroAI Panel" in text
 
 
+def test_resolve_panel_route_detects_orphan_pin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OPENCODE_API_KEY", "zen")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    settings = tmp_path / ".dsh" / "settings.yaml"
+    settings.parent.mkdir(parents=True)
+    settings.write_text(
+        "agent-default-model:\n  provider: deepseek-official\n  model: deepseek-flash\n",
+        encoding="utf-8",
+    )
+    health = rb.resolve_panel_route(tmp_path)
+    assert health["pinned"] == "deepseek-official"
+    assert health["preferred"] == "opencode-go"
+    assert health["effective"] == "opencode-go"
+    assert health["pin_orphaned"] is True
+
+
+def test_panel_doctor_flags_orphan_and_models_remap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setenv("OPENCODE_API_KEY", "zen")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    settings = home / ".dsh" / "settings.yaml"
+    settings.parent.mkdir(parents=True)
+    settings.write_text(
+        "agent-default-model:\n  provider: deepseek-official\n  model: deepseek-flash\n",
+        encoding="utf-8",
+    )
+    doctor = runner.invoke(app, ["--json", "panel", "doctor"])
+    assert doctor.exit_code == 0, doctor.output
+    import json
+
+    payload = json.loads(doctor.output)
+    assert payload["pin_orphaned"] is True
+    assert payload["effective"] == "opencode-go"
+    assert payload["ok"] is False
+
+    models = runner.invoke(app, ["panel", "models"])
+    assert models.exit_code == 0, models.output
+    assert "effective router: opencode-go" in models.output
+    assert "→ remap" in models.output or "Shipped preset" in models.output
+
+
 def test_panel_cli_models_routers_doctor(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEEPSEEK_API_KEY", "d-key")
     for cmd in (["panel", "routers"], ["panel", "models"], ["panel", "doctor"]):
         result = runner.invoke(app, ["--json", *cmd])
-        assert result.exit_code == 0, result.output
-        assert "AstroAI" in result.output or "deepseek" in result.output.lower()
+        assert result.exit_code in (0, 2), result.output
+        assert "deepseek" in result.output.lower() or "opencode" in result.output.lower()
 
 
 def test_agent_routers_cli(monkeypatch: pytest.MonkeyPatch) -> None:

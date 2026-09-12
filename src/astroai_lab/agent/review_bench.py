@@ -19,6 +19,7 @@ import json
 import os
 import shutil
 from pathlib import Path
+from typing import TypedDict
 
 import yaml
 
@@ -27,6 +28,15 @@ from astroai_lab.agent.support import load_support
 from astroai_lab.errors import LabError
 
 DSH_VERSION = "0.1.5-rc.2"
+
+
+class PanelRouteHealth(TypedDict):
+    preferred: str | None
+    pinned: str | None
+    effective: str | None
+    pin_orphaned: bool
+    keys_present: list[str]
+    usable: bool
 
 
 def __getattr__(name: str):
@@ -312,6 +322,70 @@ def ensure_dsh_dotenv(home: Path | None = None, *, dry_run: bool = False) -> dic
                 encoding="utf-8",
             )
     return keys
+
+
+def read_dsh_pinned_provider(home: Path | None = None) -> str | None:
+    """Return ``agent-default-model.provider`` from ``~/.dsh/settings.yaml``, if any."""
+    home = home or Path.home()
+    settings = home / ".dsh" / "settings.yaml"
+    if not settings.is_file():
+        return None
+    try:
+        loaded = yaml.safe_load(settings.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return None
+    if not isinstance(loaded, dict):
+        return None
+    current = loaded.get("agent-default-model")
+    if isinstance(current, dict) and current.get("provider"):
+        return str(current["provider"])
+    return None
+
+
+def preferred_provider(keys: dict[str, str]) -> str | None:
+    """First catalog router whose key is present (preference order)."""
+    if not keys:
+        return None
+    catalog = load_support()
+    key_to_route = catalog.key_to_route()
+    for key in catalog.dsh_keys:
+        if key in keys:
+            return key_to_route[key][0]
+    return None
+
+
+def resolve_panel_route(
+    home: Path | None = None,
+    *,
+    keys: dict[str, str] | None = None,
+) -> PanelRouteHealth:
+    """Preferred vs pinned vs effective route for doctor/models.
+
+    ``effective`` is the pin when its key is present, else the preferred
+    available router. ``pin_orphaned`` means settings pin a provider with no key.
+    """
+    home = home or Path.home()
+    present = keys if keys is not None else discover_dsh_keys(home)
+    catalog = load_support()
+    key_to_route = catalog.key_to_route()
+    preferred = preferred_provider(present)
+    pinned = read_dsh_pinned_provider(home)
+    pin_key = None
+    if pinned:
+        for key, (route_id, _) in key_to_route.items():
+            if route_id == pinned:
+                pin_key = key
+                break
+    pin_orphaned = bool(pinned and pin_key and pin_key not in present)
+    effective = pinned if pinned and not pin_orphaned and pin_key in present else preferred
+    return PanelRouteHealth(
+        preferred=preferred,
+        pinned=pinned,
+        effective=effective,
+        pin_orphaned=pin_orphaned,
+        keys_present=sorted(present),
+        usable=effective is not None,
+    )
 
 
 def ensure_dsh_settings(

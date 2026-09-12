@@ -264,18 +264,35 @@ def agent_routers_cmd(ctx: typer.Context) -> None:
 
     opts = get_opts(ctx)
     keys = _rb.discover_dsh_keys()
+    health = _rb.resolve_panel_route(keys=keys)
     rows = routers_status(keys_present=keys)
+    for row in rows:
+        row["preferred"] = row["id"] == health["preferred"]
+        row["pinned"] = row["id"] == health["pinned"]
+        row["effective"] = row["id"] == health["effective"]
     if opts.json:
-        ui.print_json({"routers": rows})
+        ui.print_json({"routers": rows, "route": health})
         return
     ui.print_hint("AstroAI-supported routers (preference order)")
-    ui.print_hint("  Id                  Key                   Present  Default")
-    ui.print_hint("  ──────────────────  ────────────────────  ───────  ────────────")
+    ui.print_hint("  Mark     Id                  Key                   Present  Default")
+    ui.print_hint("  ───────  ──────────────────  ────────────────────  ───────  ────────────")
     for row in rows:
+        marks = []
+        if row["effective"]:
+            marks.append("*")
+        if row["preferred"] and not row["effective"]:
+            marks.append("P")
+        if row["pinned"]:
+            marks.append("pin" if not health["pin_orphaned"] else "orphan")
+        mark = ",".join(marks) if marks else "-"
         present = "✓" if row["key_present"] else "-"
-        ui.print_hint(f"  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}")
+        ui.print_hint(
+            f"  {mark:<7}  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}"
+        )
         if row.get("notes"):
-            ui.print_hint(f"    {row['notes']}")
+            ui.print_hint(f"        {row['notes']}")
+    ui.print_hint("  * effective   P preferred (unused)   pin/orphan = ~/.dsh settings pin")
+    ui.print_hint("  Same catalog: astroai panel routers | doctor")
 
 
 def _print_plugins(
