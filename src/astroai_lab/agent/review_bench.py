@@ -19,6 +19,7 @@ import json
 import os
 import shutil
 from pathlib import Path
+from typing import TypedDict
 
 import yaml
 
@@ -27,6 +28,15 @@ from astroai_lab.agent.support import load_support
 from astroai_lab.errors import LabError
 
 DSH_VERSION = "0.1.5-rc.2"
+
+
+class PanelRouteHealth(TypedDict):
+    preferred: str | None
+    pinned: str | None
+    effective: str | None
+    pin_orphaned: bool
+    keys_present: list[str]
+    usable: bool
 
 
 def __getattr__(name: str):
@@ -348,7 +358,7 @@ def resolve_panel_route(
     home: Path | None = None,
     *,
     keys: dict[str, str] | None = None,
-) -> dict[str, object]:
+) -> PanelRouteHealth:
     """Preferred vs pinned vs effective route for doctor/models.
 
     ``effective`` is the pin when its key is present, else the preferred
@@ -368,14 +378,14 @@ def resolve_panel_route(
                 break
     pin_orphaned = bool(pinned and pin_key and pin_key not in present)
     effective = pinned if pinned and not pin_orphaned and pin_key in present else preferred
-    return {
-        "preferred": preferred,
-        "pinned": pinned,
-        "effective": effective,
-        "pin_orphaned": pin_orphaned,
-        "keys_present": sorted(present),
-        "usable": effective is not None,
-    }
+    return PanelRouteHealth(
+        preferred=preferred,
+        pinned=pinned,
+        effective=effective,
+        pin_orphaned=pin_orphaned,
+        keys_present=sorted(present),
+        usable=effective is not None,
+    )
 
 
 def ensure_dsh_settings(

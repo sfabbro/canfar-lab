@@ -293,15 +293,18 @@ def panel_models(ctx: typer.Context) -> None:
                 "unknown": unknown,
             }
         )
+    active_router = catalog.router_by_id(route)
     payload = {
         "route": route,
         "preferred": health["preferred"],
         "pinned": health["pinned"],
         "pin_orphaned": health["pin_orphaned"],
         "key_present": any(catalog.key_to_route().get(k, (None, None))[0] == route for k in keys),
-        "panel_default": (catalog.router_by_id(route) or shipped).panel_default
-        if catalog.router_by_id(route) or shipped
-        else None,
+        "panel_default": (
+            active_router.panel_default
+            if active_router is not None
+            else (shipped.panel_default if shipped is not None else None)
+        ),
         "roles": rows,
     }
     if opts.json:
