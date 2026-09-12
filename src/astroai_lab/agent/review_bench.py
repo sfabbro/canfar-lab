@@ -23,28 +23,19 @@ from pathlib import Path
 import yaml
 
 from astroai_lab.agent.bundle_path import review_bench_root as _vendored_root
+from astroai_lab.agent.support import load_support
 from astroai_lab.errors import LabError
 
 DSH_VERSION = "0.1.5-rc.2"
 
-# Keys the dsh headless route can use, in preference order. OPENCODE_API_KEY
-# is first: `use-opencode-go.sh` (opencode Zen) needs no DeepSeek key.
-DSH_KEYS = (
-    "OPENCODE_API_KEY",
-    "GEMINI_API_KEY",
-    "DEEPSEEK_API_KEY",
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
-)
 
-# Key -> (settings provider id, default model on that route).
-_KEY_TO_ROUTE = {
-    "OPENCODE_API_KEY": ("opencode-go", "deepseek-v4-flash"),
-    "GEMINI_API_KEY": ("google", "gemini-2.5-flash"),
-    "DEEPSEEK_API_KEY": ("deepseek-official", "deepseek-flash"),
-    "OPENAI_API_KEY": ("openai-official", "gpt-5-mini"),
-    "ANTHROPIC_API_KEY": ("anthropic-official", "claude-haiku-4-5"),
-}
+def __getattr__(name: str):
+    """Expose ``DSH_KEYS`` / ``_KEY_TO_ROUTE`` from ``support.yaml``."""
+    if name == "DSH_KEYS":
+        return load_support().dsh_keys
+    if name == "_KEY_TO_ROUTE":
+        return load_support().key_to_route()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def vendored_review_bench_root() -> Path:
@@ -278,7 +269,7 @@ def discover_dsh_keys(home: Path | None = None) -> dict[str, str]:
     dotenv = openrouter_dotenv_path(home)
     xdg = Path(os.environ.get("XDG_DATA_HOME", "") or home / ".local" / "share")
     found: dict[str, str] = {}
-    for name in DSH_KEYS:
+    for name in load_support().dsh_keys:
         candidates = [
             os.environ.get(name),
             _read_dotenv_value(dotenv, name),
@@ -323,18 +314,31 @@ def ensure_dsh_dotenv(home: Path | None = None, *, dry_run: bool = False) -> dic
     return keys
 
 
-def ensure_dsh_settings(home: Path | None = None, *, dry_run: bool = False) -> str | None:
+def ensure_dsh_settings(
+    home: Path | None = None,
+    *,
+    dry_run: bool = False,
+    force_provider: str | None = None,
+) -> str | None:
     """Merge the dsh provider route + default model into ``~/.dsh/settings.yaml``.
 
-    Never overwrites a user-pinned ``agent-default-model.provider``; only adds
-    the missing provider entry. Returns the active provider id (or None).
+    Never overwrites a user-pinned ``agent-default-model.provider`` unless
+    ``force_provider`` is set (panel headless fallback). Returns the active
+    provider id (or None).
     """
     home = home or Path.home()
     keys = discover_dsh_keys(home)
     if not keys:
         return None
-    first_key = next(k for k in DSH_KEYS if k in keys)
-    provider, model = _KEY_TO_ROUTE[first_key]
+    catalog = load_support()
+    key_to_route = catalog.key_to_route()
+    first_key = next(k for k in catalog.dsh_keys if k in keys)
+    provider, model = key_to_route[first_key]
+    if force_provider:
+        for key, (route_id, default_model) in key_to_route.items():
+            if route_id == force_provider and key in keys:
+                provider, model = route_id, default_model
+                break
     settings = home / ".dsh" / "settings.yaml"
     doc: dict = {}
     if settings.is_file():
@@ -348,17 +352,23 @@ def ensure_dsh_settings(home: Path | None = None, *, dry_run: bool = False) -> s
     if not isinstance(providers, dict):
         providers = doc["llm-pi-ai"]["providers"] = {}
     for name in keys:
-        route, _ = _KEY_TO_ROUTE[name]
+        route, _ = key_to_route[name]
         entry = providers.get(route)
         if not isinstance(entry, dict) or entry.get("apiKeyEnv") != name:
             providers[route] = {"apiKeyEnv": name}
     current = doc.get("agent-default-model")
     pinned = current.get("provider") if isinstance(current, dict) else None
-    if not pinned:
+    if force_provider or not pinned:
         doc["agent-default-model"] = {"provider": provider, "model": model}
         active = provider
     else:
         active = str(pinned)
+    notice = doc.setdefault("ui-onboarding", {})
+    if isinstance(notice, dict):
+        notice["welcomeNoticeVersion"] = "astroai-panel-2026-09"
+        notice["astroaiPanel"] = (
+            "AstroAI Panel — chaired eight-persona review (astroai panel run / web)."
+        )
     if not dry_run:
         settings.parent.mkdir(parents=True, exist_ok=True)
         backup = settings.with_suffix(settings.suffix + ".pre-astroai.bak")
@@ -367,3 +377,63 @@ def ensure_dsh_settings(home: Path | None = None, *, dry_run: bool = False) -> s
                 shutil.copy2(settings, backup)
         settings.write_text(yaml.safe_dump(doc, sort_keys=True), encoding="utf-8")
     return active
+
+
+def next_fallback_provider(
+    failed: str | None,
+    keys: dict[str, str],
+) -> str | None:
+    """Next router after ``failed`` that has a key present (skip opencode-go for headless)."""
+    catalog = load_support()
+    key_to_route = catalog.key_to_route()
+    seen_failed = failed is None
+    for key in catalog.dsh_keys:
+        if key not in keys:
+            continue
+        route_id, _ = key_to_route[key]
+        if not seen_failed:
+            if route_id == failed:
+                seen_failed = True
+            continue
+        if route_id == "opencode-go":
+            continue  # Console Go needs a session header for headless
+        return route_id
+    return None
+
+
+def is_opencode_go_headless_error(message: str) -> bool:
+    low = message.lower()
+    return (
+        "missingsessionid" in low.replace("_", "")
+        or "x-opencode-session" in low
+        or ("console go" in low and "400" in low)
+    )
+
+
+def panel_role_pins(router_id: str) -> dict[str, str]:
+    """Map ask_<role> tool → model id for ``router_id``."""
+    catalog = load_support()
+    out: dict[str, str] = {}
+    for role in catalog.panel_roles:
+        model = catalog.role_model(role, router_id)
+        if model:
+            out[role] = model
+    return out
+
+
+def extract_preset_role_models(root: Path | None = None) -> dict[str, str]:
+    """Parse vendored/managed preset for ask_<role> → model pins."""
+    root = root or vendored_review_bench_root()
+    preset = root / "presets" / "review-bench" / "agent.cordis.yml"
+    if not preset.is_file():
+        return {}
+    text = preset.read_text(encoding="utf-8")
+    roles: dict[str, str] = {}
+    current: str | None = None
+    for line in text.splitlines():
+        if "toolName: ask_" in line:
+            current = line.split("ask_", 1)[1].strip()
+        elif current and "model:" in line:
+            roles[current] = line.split("model:", 1)[1].strip()
+            current = None
+    return roles

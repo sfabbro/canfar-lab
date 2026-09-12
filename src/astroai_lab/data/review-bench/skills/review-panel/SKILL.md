@@ -1,26 +1,26 @@
 ---
 name: review-panel
-description: Chaired eight-persona review protocol for code, analyses, and papers — freeze the artefact, run a blind parallel panel with mandatory probes, audit the evidence, replicate the headline number independently, cross-examine only contested findings, gate every verdict on evidence, then land fixes and label claim strength. Use when asked to review, referee, audit, validate, or stress-test a result, a pipeline, or a manuscript.
+description: AstroAI Panel — chaired eight-persona review protocol for code, analyses, and papers — freeze the artefact, run a blind parallel panel with mandatory probes, audit the evidence, replicate the headline number independently, cross-examine only contested findings, gate every verdict on evidence, then land fixes and label claim strength. Use when asked to review, referee, audit, validate, or stress-test a result, a pipeline, or a manuscript.
 whenToUse: The user asks for a rigorous review, panel, audit, red-team, or referee report on a repository, analysis, result, or paper; or a claim is about to be published and needs an adversarial pass.
 metadata:
   domains: review, statistics, peer-review, reproducibility
   panel: review-bench preset
 ---
 
-# Review panel protocol
+# Review panel protocol (AstroAI Panel)
 
-Eight specialist reviewers, each reachable through its own delegation tool in the `review-bench`
-preset:
+Eight specialist reviewers, each reachable through its own delegation tool in the
+`review-bench` / AstroAI Panel preset:
 
 | Tool | Lens | Pinned model |
 |---|---|---|
 | `ask_statistician` | inferential validity, uncertainty calibration, multiplicity, leakage | v4-pro, high |
 | `ask_mathematician` | definitions, assumptions, derivations, identifiability, counterexamples | v4-pro, max |
-| `ask_data_scientist` | data provenance, split hygiene, evaluation design, shift, baselines | v4-flash |
-| `ask_ml_engineer` | training/eval correctness, ablations, seed variance, numerics, efficiency | v4-flash |
+| `ask_data_scientist` | data provenance, split hygiene, evaluation design, shift, baselines | v4.1-flash |
+| `ask_ml_engineer` | training/eval correctness, ablations, seed variance, numerics, efficiency | v4.1-flash |
 | `ask_physicist` | units, regimes of validity, limits, systematic error budget, falsifiability | v4-pro, high |
 | `ask_astrophysicist` | astronomical conventions, sample selection, catalogue/photo-z systematics | v4-flash-vision-exp |
-| `ask_software_engineer` | execution-path correctness, tests, determinism, resources, reproducibility | v4-flash |
+| `ask_software_engineer` | execution-path correctness, tests, determinism, resources, reproducibility | v4.1-flash |
 | `ask_writing_editor` | claim calibration, structure, terminology, captions, novelty framing | v4-pro, low |
 
 Each child gets a fresh session, a system-prompt persona, a research-and-run tool set (read,

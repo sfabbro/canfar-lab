@@ -26,6 +26,7 @@ CANONICAL_VERBS = {
     "update",
     "verify",
     "env",
+    "routers",
     "plugins",
 }
 

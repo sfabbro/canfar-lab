@@ -28,10 +28,11 @@ agent_app = typer.Typer(
         "CLIs install to $HOME (~/.local/bin); settings stay on $HOME.\n"
         "Skills: npx skills add …  (not managed by AstroAI).\n\n"
         "Quick map:\n"
-        "  list          agents (Bin/Cfg/Where/Ver; --description, --ui)\n"
+        "  list          agents (Bin/Cfg/Where/Ver; --description, --supported, --ui)\n"
         "  install       CLI binary onto $HOME (upstream-compatible)\n"
         "  remove        CLI from $HOME\n"
-        "  setup         first-run scaffold (--project for a repo)\n"
+        "  setup         first-run scaffold (--recommended, --project for a repo)\n"
+        "  routers       AstroAI-supported LLM routers (shared with panel)\n"
         "  config        read/write that agent's settings file on $HOME\n"
         "  update        refresh CLI and bundled agent configs\n"
         "  verify        health check (--fix, --clean)\n"
@@ -147,13 +148,24 @@ def _print_status_table(
     stamp: str | None = None,
     failed: str | None = None,
     show_description: bool = False,
+    supported_only: bool = False,
+    recommended: frozenset[str] | None = None,
 ) -> None:
     from astroai_lab.version import display_version
 
+    recommended = recommended or frozenset()
     ui.print_hint(f"  astroai {display_version()}")
-    ui.print_hint("  Agent         Bin  Cfg  Where    Ver")
-    ui.print_hint("  ────────────  ───  ───  ───────  ────────")
+    if supported_only:
+        ui.print_hint("  Agent         Sup  Bin  Cfg  Where    Ver")
+        ui.print_hint("  ────────────  ───  ───  ───  ───────  ────────")
+    else:
+        ui.print_hint("  Agent         Bin  Cfg  Where    Ver")
+        ui.print_hint("  ────────────  ───  ───  ───────  ────────")
     for row in report["agents"]:
+        name = row.get("id") or row.get("agent") or "?"
+        is_supported = name in recommended
+        if supported_only and not is_supported:
+            continue
         binary_ok = bool(row.get("binary_ok", row.get("binary")))
         b = "✓" if binary_ok else "-"
         # Cfg: logged in or settings on home (declared file or upstream state dirs).
@@ -162,7 +174,6 @@ def _print_status_table(
             config_installed = bool(row.get("config_ok", row.get("config")))
         c = "✓" if config_installed else "-"
         ver = (row.get("version") or "-")[:12]
-        name = row.get("id") or row.get("agent") or "?"
         name_disp = name
         src_raw = row.get("binary_source") or ("managed" if row.get("managed") else "-")
         if not binary_ok:
@@ -178,7 +189,12 @@ def _print_status_table(
         name_cell = f"[bold]{name_disp:<13}[/bold]" if binary_ok else f"{name_disp:<13}"
         b_cell = f"[bold]{b:<3}[/bold]" if binary_ok else f"{b:<3}"
         c_cell = f"[bold]{c:<3}[/bold]" if config_installed else f"{c:<3}"
-        ui.print_markup(f"  {name_cell} {b_cell} {c_cell} {src:<7} {ver}")
+        if supported_only:
+            s = "✓" if is_supported else "-"
+            ui.print_markup(f"  {name_cell} {s:<3} {b_cell} {c_cell} {src:<7} {ver}")
+        else:
+            mark = " *" if is_supported else ""
+            ui.print_markup(f"  {name_cell} {b_cell} {c_cell} {src:<7} {ver}{mark}")
         if show_description:
             summary = (row.get("summary") or "").strip()
             if summary:
@@ -197,10 +213,13 @@ def _print_status_table(
     ui.print_hint("  Try:  agent install kilo && agent setup kilo && agent verify")
     ui.print_hint("  Skills:  npx skills add astroai/canfar-skills")
     ui.print_hint("  More:  agent list --description   ·   agent plugins list")
+    ui.print_hint("  Also:  agent list --supported   ·   agent setup --recommended")
     ui.print_hint(
         "  Cfg: logged in or has settings on home   "
         "Where: home=$HOME  legacy=$SCRATCH leftover  image=already in the image"
     )
+    if recommended and not supported_only:
+        ui.print_hint("  *: AstroAI-recommended (support.yaml)")
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +237,13 @@ def agent_list_cmd(
             help="Show one-line summary under each agent.",
         ),
     ] = False,
+    supported: Annotated[
+        bool,
+        typer.Option(
+            "--supported",
+            help="Only show agents listed in support.yaml recommended set.",
+        ),
+    ] = False,
     ui_endpoints: Annotated[
         bool,
         typer.Option("--ui", help="Show active container UI endpoints."),
@@ -227,7 +253,29 @@ def agent_list_cmd(
     if ui_endpoints:
         _print_interact(get_opts(ctx))
         return
-    _emit_agent_list(ctx, show_description=description)
+    _emit_agent_list(ctx, show_description=description, supported_only=supported)
+
+
+@agent_app.command("routers")
+def agent_routers_cmd(ctx: typer.Context) -> None:
+    """AstroAI-supported LLM routers (same catalog as ``panel routers``)."""
+    from astroai_lab.agent import review_bench as _rb
+    from astroai_lab.agent.support import routers_status
+
+    opts = get_opts(ctx)
+    keys = _rb.discover_dsh_keys()
+    rows = routers_status(keys_present=keys)
+    if opts.json:
+        ui.print_json({"routers": rows})
+        return
+    ui.print_hint("AstroAI-supported routers (preference order)")
+    ui.print_hint("  Id                  Key                   Present  Default")
+    ui.print_hint("  ──────────────────  ────────────────────  ───────  ────────────")
+    for row in rows:
+        present = "✓" if row["key_present"] else "-"
+        ui.print_hint(f"  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}")
+        if row.get("notes"):
+            ui.print_hint(f"    {row['notes']}")
 
 
 def _print_plugins(
@@ -330,14 +378,29 @@ def _want_version_probe(opts) -> bool:
     )
 
 
-def _emit_agent_list(ctx: typer.Context, *, show_description: bool = False) -> None:
+def _emit_agent_list(
+    ctx: typer.Context,
+    *,
+    show_description: bool = False,
+    supported_only: bool = False,
+) -> None:
     from astroai_lab.agent.setup_state import build_agent_report, read_setup_state
+    from astroai_lab.agent.support import load_support
 
     opts = get_opts(ctx)
     home = Path.home()
     report = build_agent_report(home, probe_ver=_want_version_probe(opts))
     state = read_setup_state(home)
+    recommended = frozenset(load_support().recommended_agents)
     if opts.json:
+        if supported_only:
+            report = {
+                **report,
+                "agents": [a for a in report["agents"] if a.get("id") in recommended],
+                "supported": sorted(recommended),
+            }
+        else:
+            report = {**report, "supported": sorted(recommended)}
         ui.print_json(report)
         if not report.get("ok"):
             raise typer.Exit(1)
@@ -347,6 +410,8 @@ def _emit_agent_list(ctx: typer.Context, *, show_description: bool = False) -> N
         stamp=state.stamp,
         failed=state.failed,
         show_description=show_description,
+        supported_only=supported_only,
+        recommended=recommended,
     )
 
 
@@ -365,6 +430,13 @@ def agent_setup_cmd(
     all_agents: Annotated[
         bool,
         typer.Option("--all", help="Registry-driven setup for every installed agent."),
+    ] = False,
+    recommended: Annotated[
+        bool,
+        typer.Option(
+            "--recommended",
+            help="Install+setup the AstroAI recommended agent set (support.yaml).",
+        ),
     ] = False,
     post_install: Annotated[
         bool,
@@ -442,10 +514,28 @@ def agent_setup_cmd(
         registry_ids,
         setup_registry_agent,
     )
+    from astroai_lab.agent.support import load_support
 
     names = list(bundle) if bundle else []
     registry = registry_ids()
-    if all_agents:
+    if recommended:
+        catalog = load_support()
+        names = list(dict.fromkeys([*catalog.recommended_agents, *catalog.panel_agents]))
+        # Skip marimo unless OpenRouter is available (marimo AI needs it).
+        if "marimo" in names and not agent_setup_mod.discover_openrouter_key():
+            names = [n for n in names if n != "marimo"]
+            ui.print_hint("Skipping marimo (no OPENROUTER_API_KEY).")
+        if not opts.dry_run:
+            for tool in names:
+                try:
+                    _install_one_agent(tool, dry_run=False)
+                except LabError as exc:
+                    ui.print_warn(f"install {tool}: {exc}")
+        agent_ids = [n for n in names if n in registry]
+        bundle_names = [n for n in names if n not in registry]
+        if names and not opts.json:
+            ui.print_hint(f"Recommended set: {', '.join(names)}")
+    elif all_agents:
         agent_ids = [a["id"] for a in list_installed_registry_agents()]
         bundle_names: list[str] = []
         if names:
@@ -470,7 +560,7 @@ def agent_setup_cmd(
         agent_actions.extend(res["actions"])
         agent_errors.extend(res["errors"])
 
-    if agent_ids or all_agents:
+    if agent_ids or all_agents or recommended:
         bundle_result = None
         if bundle_names:
             try:

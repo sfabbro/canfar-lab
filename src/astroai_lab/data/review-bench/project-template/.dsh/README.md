@@ -69,7 +69,9 @@ with DeepSeekHarness(
     session_root="/tmp/dsh-sessions",
     cordis="path/to/minimal.cordis.yml",  # full composition, e.g. the SDK's jsonrpc-agent example
 ) as h:
-    r = h.run("Compare the map-ground-truth run against benchmarks/baselines/map_ground_truth_rep.json")
+    r = h.run(
+        "Compare the map-ground-truth run against benchmarks/baselines/map_ground_truth_rep.json"
+    )
     print(r.final_response)
 ```
 
