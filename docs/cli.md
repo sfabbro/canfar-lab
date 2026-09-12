@@ -44,7 +44,7 @@ one after another.
 astroai clone myproject
 astroai clone sfabbro/torchsky
 astroai clone sfabbro/torchsky --update          # fetch+ff origin tip if dest exists
-astroai clone sfabbro/torchsky --ref wip/topic   # or a commit SHA
+astroai clone sfabbro/torchsky --ref topic   # or a commit SHA
 astroai clone sfabbro/torchsky --update --ref abc1234
 astroai clone --from-env ml-base owner/repo
 astroai clone owner/repo --to $SRCDIR/custom

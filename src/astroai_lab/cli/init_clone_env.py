@@ -84,6 +84,7 @@ def _init_impl(
     no_git: bool,
     no_gh: bool,
     src_dir: Path | None,
+    with_dsh: bool = False,
 ) -> None:
     from astroai_lab.core.project import init_project
 
@@ -110,6 +111,12 @@ def _init_impl(
         ui.print_error(str(exc))
         raise typer.Exit(1) from exc
     ui.print_ok(f"Project ready: {target}")
+    if with_dsh:
+        from astroai_lab.panel import scaffold_repo_dsh
+
+        for path in scaffold_repo_dsh(target):
+            ui.print_ok(f"dsh scaffold: {path}")
+        ui.print_hint('  `astroai panel run . "C1: ...; C2: ..." my-slug`')
     ui.print_hint(f"  `cd {target}`")
     ui.print_hint("  `pixi add python numpy`" if kind.value == "pixi" else "  `uv add numpy`")
     if not no_gh and shutil.which("gh") and not no_git:
@@ -128,7 +135,7 @@ def _gh_fork_parent(spec: str) -> str | None:
                 "--json",
                 "isFork,parent",
                 "-q",
-                'if .isFork then .parent.nameWithOwner else empty end',
+                "if .isFork then .parent.nameWithOwner else empty end",
             ]
         ).strip()
     except LabError:
@@ -168,6 +175,10 @@ def register(app: typer.Typer) -> None:
                 help="Source directory (default: $SRCDIR).",
             ),
         ] = None,
+        with_dsh: Annotated[
+            bool,
+            typer.Option("--with-dsh", help="Scaffold .dsh/ review-panel patch + README."),
+        ] = False,
     ) -> None:
         """Create a new pixi or uv project under the work directory.
 
@@ -175,8 +186,9 @@ def register(app: typer.Typer) -> None:
             astroai init mylab
             astroai init mylab --uv
             astroai init mylab --dir ~/src
+            astroai init mylab --with-dsh
         """
-        _init_impl(ctx, name, uv_project, no_git, no_gh, src_dir)
+        _init_impl(ctx, name, uv_project, no_git, no_gh, src_dir, with_dsh=with_dsh)
 
     @app.command()
     def clone(
@@ -229,7 +241,7 @@ def register(app: typer.Typer) -> None:
         Examples:
             astroai clone myproject
             astroai clone sfabbro/torchsky --update
-            astroai clone sfabbro/torchsky --ref wip/topic
+            astroai clone sfabbro/torchsky --ref topic
             astroai clone --from-env ml-base myorg/myproject
             astroai clone owner/repo --to $WORK/custom
         """

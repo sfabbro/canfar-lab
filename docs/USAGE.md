@@ -130,7 +130,7 @@ astroai clone owner/repo
 astroai clone owner/a owner/b
 astroai clone --from-env mylab owner/repo
 astroai clone owner/repo --update              # refresh existing checkout
-astroai clone owner/repo --ref wip/topic
+astroai clone owner/repo --ref topic
 astroai clone owner/repo --dir ~/src           # persist on /arc/home
 astroai clone owner/repo --dir /arc/projects/mygroup
 ```

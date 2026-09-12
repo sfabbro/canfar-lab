@@ -28,3 +28,21 @@ def bundled_skill_src(name: str) -> Path:
         if (src / "SKILL.md").is_file():
             return src
     return root / "skills" / name
+
+
+def review_bench_root() -> Path:
+    """Vendored review-bench tree (``data/review-bench``).
+
+    ``ASTROAI_LAB_DATA`` overrides the package data dir (dev checkouts);
+    otherwise resolves next to this file. Raises FileNotFoundError when the
+    tree is absent (editable install without sync).
+    """
+    env = os.environ.get("ASTROAI_LAB_DATA", "").strip()
+    if env:
+        candidate = Path(env) / "review-bench"
+        if candidate.is_dir():
+            return candidate
+    pkg = Path(__file__).resolve().parent.parent / "data" / "review-bench"
+    if pkg.is_dir():
+        return pkg
+    raise FileNotFoundError(f"Review bench not found: {pkg}")

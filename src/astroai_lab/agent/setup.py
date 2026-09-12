@@ -758,7 +758,15 @@ def agent_setup(
 
     def _run() -> SetupResult:
         ensure_agent_dirs(home, dry_run=dry_run)
+        actions_pre: list[str] = []
         if mode != "project":
+            from astroai_lab.agent import review_bench as _review_bench
+
+            try:
+                if _review_bench.ensure_review_bench(home, dry_run=dry_run, force=force):
+                    actions_pre = ["review-bench"]
+            except Exception as exc:  # noqa: BLE001 — bench must never block setup
+                warnings.append(f"review-bench: {exc}")
             warnings.extend(
                 f"runtime: {a}" for a in relocate_agent_runtime_state(home, dry_run=dry_run)
             )
@@ -771,7 +779,18 @@ def agent_setup(
             except Exception as exc:  # noqa: BLE001 — partial success
                 failed.append((name, str(exc)))
 
-        actions = [f"bundle:{n}" for n in succeeded]
+        actions = actions_pre + [f"bundle:{n}" for n in succeeded]
+        if mode != "project":
+            try:
+                from astroai_lab.agent import review_bench as _rb_keys
+
+                if _rb_keys.ensure_dsh_dotenv(home, dry_run=dry_run):
+                    actions.append("dsh-dotenv")
+                route = _rb_keys.ensure_dsh_settings(home, dry_run=dry_run)
+                if route:
+                    actions.append(f"dsh-route:{route}")
+            except Exception as exc:  # noqa: BLE001 — credentials must never block setup
+                warnings.append(f"dsh-credentials: {exc}")
         errors = [f"{n}: {e}" for n, e in failed]
         partial = bool(succeeded) and bool(failed)
         ok = bool(succeeded) and not failed
@@ -865,6 +884,11 @@ def agent_sync(*, dry_run: bool = False) -> None:
         ensure_agent_dirs(home, dry_run=dry_run)
         for name in names:
             run_bundle(name, root, home, None, force=True, dry_run=dry_run)
+        from astroai_lab.agent import review_bench as _review_bench
+
+        _review_bench.ensure_review_bench(home, dry_run=dry_run, force=True)
+        _review_bench.ensure_dsh_dotenv(home, dry_run=dry_run)
+        _review_bench.ensure_dsh_settings(home, dry_run=dry_run)
         if not dry_run:
             record_setup_ok(home, mode="sync")
 

@@ -14,7 +14,8 @@ from astroai_lab.cli.main import app
 
 runner = CliRunner()
 
-# Lean surface: list/plugins are sub-typers.
+# Lean surface: list/plugins are sub-typers. `env` reports shared credential
+# state (presence only) for OpenRouter + dsh routes.
 CANONICAL_VERBS = {
     "list",
     "install",
@@ -24,6 +25,7 @@ CANONICAL_VERBS = {
     "config",
     "update",
     "verify",
+    "env",
     "plugins",
 }
 

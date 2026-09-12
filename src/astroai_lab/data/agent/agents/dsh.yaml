@@ -1,0 +1,22 @@
+# Installable via: astroai agent install dsh
+id: dsh
+name: DeepSeek Harness
+homepage: https://github.com/deepseek-ai/deepseek-harness
+summary: DeepSeek Harness CLI (dsh) + review-bench preset
+binary: dsh
+tags: [agent, cli]
+install:
+  method: npm
+  source: "@deepseek-ai/dsh@0.1.5-rc.2"
+config:
+  path: "~/.dsh/settings.yaml"
+  format: yaml
+  markers:
+    - "~/.dsh"
+verify:
+  - dsh --version
+plugins: [skill, mcp, config]
+notes: >-
+  Review bench provisioned by `astroai agent setup` into
+  ~/.astroai/lab/review-bench (presets + review-panel skill) and
+  ~/.dsh/profiles/web/cordis.patch.yml. Run panels with `astroai panel run`.
