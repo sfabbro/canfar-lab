@@ -33,6 +33,51 @@ open(p, "w").write(text.replace(old, new))
 print("patched customSkillDirs -> managed bench + ~/dsh fallback")
 PY
 
+# 2. AstroAI Panel branding (preset name + skill model table pins for v4.1-flash)
+python3 - "$DST" <<'PY'
+from pathlib import Path
+import sys
+
+dst = Path(sys.argv[1])
+preset = dst / "presets" / "review-bench" / "preset.yml"
+preset.write_text(
+    "name: AstroAI Panel\n"
+    "description: >-\n"
+    "  AstroAI chaired eight-persona review panel — statistician, mathematician,\n"
+    "  data scientist, ML engineer, physicist, astrophysicist, software engineer,\n"
+    "  writing editor — blind round, cross-examination, evidence-gated verdicts.\n"
+    "  Run via `astroai panel` / `astroai review`.\n"
+    "order: 10\n",
+    encoding="utf-8",
+)
+print("rewrote preset.yml -> AstroAI Panel")
+
+cordis = dst / "presets" / "review-bench" / "agent.cordis.yml"
+text = cordis.read_text(encoding="utf-8")
+# Flash roles on OpenCode Go: prefer deepseek-v4.1-flash when upstream still has v4-flash.
+for role in ("data_scientist", "ml_engineer", "software_engineer"):
+    # ponytail: line-local replace after toolName ask_<role> block; ceiling = multi-model rows
+    pass
+# Replace bare deepseek-v4-flash pins that are not vision-exp (vision keeps v4-flash-vision-exp).
+lines = text.splitlines(keepends=True)
+out = []
+current = None
+for line in lines:
+    if "toolName: ask_" in line:
+        current = line.split("ask_", 1)[1].strip()
+    if (
+        current in {"data_scientist", "ml_engineer", "software_engineer"}
+        and "model: deepseek-v4-flash" in line
+        and "vision" not in line
+        and "v4.1" not in line
+    ):
+        line = line.replace("deepseek-v4-flash", "deepseek-v4.1-flash")
+        current = None
+    out.append(line)
+cordis.write_text("".join(out), encoding="utf-8")
+print("pinned flash roles -> deepseek-v4.1-flash where applicable")
+PY
+
 echo "ok: synced $SRC -> $DST"
 if command -v node >/dev/null 2>&1; then
   node "$DST/validate.mjs" --root "$DST" || echo "(validate needs a dsh install: --node-modules <dir>)"

@@ -326,7 +326,7 @@
         backgroundMode: continuable
         maxDepth: 1
         agentOptions:
-          model: deepseek-v4-flash
+          model: deepseek-v4.1-flash
         toolFilter:
           allow: [read, read_image, glob, grep, bash, skill, web_search, todo_write]
         persona: |-
@@ -354,7 +354,7 @@
         backgroundMode: continuable
         maxDepth: 1
         agentOptions:
-          model: deepseek-v4-flash
+          model: deepseek-v4.1-flash
         toolFilter:
           allow: [read, read_image, glob, grep, bash, skill, web_search, todo_write]
         persona: |-
@@ -442,7 +442,7 @@
         backgroundMode: continuable
         maxDepth: 1
         agentOptions:
-          model: deepseek-v4-flash
+          model: deepseek-v4.1-flash
         toolFilter:
           allow: [read, read_image, glob, grep, bash, skill, web_search, todo_write]
         persona: |-

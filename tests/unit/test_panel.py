@@ -82,9 +82,25 @@ def test_run_panel_rejects_missing_repo(tmp_path: Path) -> None:
         panel_mod.run_panel(tmp_path / "absent", "C1: x", dry_run=True)
 
 
-def test_run_panel_needs_key(tmp_path: Path, _isolated_home: Path) -> None:
-    with pytest.raises(LabError, match="No dsh provider key"):
-        panel_mod.run_panel(tmp_path, "C1: x", dry_run=False)
+def test_run_panel_fallback_on_opencode_go_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, _isolated_home: Path
+) -> None:
+    monkeypatch.setenv("OPENCODE_API_KEY", "zen")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "d-key")
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, *, cwd=None, **_kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        if len(calls) == 1:
+            raise LabError("MissingSessionID / x-opencode-session required (Console Go 400)")
+        return None
+
+    monkeypatch.setattr("astroai_lab.utils.subprocess.run", fake_run)
+    result = panel_mod.run_panel(tmp_path, "C1: x", "smoke", dry_run=False)
+    assert result["route"] == "deepseek-official"
+    assert result["fallback_note"] and "falling back" in result["fallback_note"]
+    assert len(calls) == 2
+
 
 
 def test_scaffold_matches_template(tmp_path: Path) -> None:

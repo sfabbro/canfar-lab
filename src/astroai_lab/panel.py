@@ -141,13 +141,14 @@ def run_panel(
     dry_run: bool = False,
     ensure_credentials: bool = True,
 ) -> dict[str, Any]:
-    """Run (or plan, with ``dry_run``) a headless review panel.
+    """Run (or plan, with ``dry_run``) a headless AstroAI Panel.
 
     Returns ``{"repo", "panel_id", "route", "task", "report_dir"}``; with
     ``dry_run`` nothing executes. Importable from marimo notebooks without a
     shell: ``from astroai_lab.panel import run_panel``.
     """
     from astroai_lab.agent import review_bench as _rb
+    from astroai_lab.agent.support import load_support
 
     repo_path = resolve_repo(repo)
     if not repo_path.is_dir():
@@ -165,13 +166,14 @@ def run_panel(
         _rb.ensure_dsh_dotenv(dry_run=False)
         route = _rb.ensure_dsh_settings(dry_run=False)
     elif keys:
-        first = next((k for k in _rb.DSH_KEYS if k in keys), None)
+        catalog = load_support()
+        first = next((k for k in catalog.dsh_keys if k in keys), None)
         if first is not None:
-            route, _ = _rb._KEY_TO_ROUTE[first]
+            route, _ = catalog.key_to_route()[first]
     if not keys and not dry_run:
         raise LabError(
             "No dsh provider key found (checked env, ~/.astroai/lab/.env, opencode auth).",
-            hint="Run `opencode auth login` or `export GEMINI_API_KEY=...`, "
+            hint="Run `opencode auth login` or `export DEEPSEEK_API_KEY=...`, "
             "then `astroai agent setup` to persist it.",
         )
     task = build_task(repo_path, claims, pid)
@@ -186,13 +188,35 @@ def run_panel(
     from astroai_lab.utils.subprocess import run
 
     (repo_path / "panel" / pid).mkdir(parents=True, exist_ok=True)
-    run(dsh_cmd(patch=patch if patch.is_file() else None, task=task), cwd=repo_path)
+    cmd = dsh_cmd(patch=patch if patch.is_file() else None, task=task)
+    fallback_note: str | None = None
+    try:
+        run(cmd, cwd=repo_path)
+    except LabError as exc:
+        if not _rb.is_opencode_go_headless_error(str(exc)):
+            raise
+        fallback = _rb.next_fallback_provider(route, keys)
+        if fallback is None:
+            raise LabError(
+                "OpenCode Go rejected headless (missing session). "
+                "No alternate provider key available.",
+                hint="Export DEEPSEEK_API_KEY or GEMINI_API_KEY, or use "
+                "`astroai panel web` on a laptop.",
+            ) from exc
+        fallback_note = (
+            f"OpenCode Go headless failed (session required); "
+            f"falling back to {fallback} for this run."
+        )
+        _rb.ensure_dsh_settings(dry_run=False, force_provider=fallback)
+        route = fallback
+        run(cmd, cwd=repo_path)
     return {
         "repo": str(repo_path),
         "panel_id": pid,
         "route": route,
         "task": task,
         "report_dir": str(repo_path / "panel" / pid),
+        "fallback_note": fallback_note,
     }
 
 
