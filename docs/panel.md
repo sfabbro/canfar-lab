@@ -22,7 +22,8 @@ panel id, credential route, and task prompt without executing.
 
 | Command | Behavior |
 |---------|----------|
-| `astroai panel doctor` | dsh presence, active route, keys, pin vs `support.yaml` |
+| `astroai panel doctor` | dsh presence, preferred/pinned/effective route, keys, pin vs `support.yaml` |
+| `astroai panel doctor --repair` | retarget orphan `~/.dsh` pin to the preferred available router |
 | `astroai panel models` | role → preset / catalog pins for the active router |
 | `astroai panel routers` | supported routers + key presence |
 | `astroai agent routers` | same router catalog |
