@@ -212,7 +212,8 @@ def _print_status_table(
     ui.print_hint("")
     ui.print_hint("  Try:  agent install kilo && agent setup kilo && agent verify")
     ui.print_hint("  Skills:  npx skills add astroai/canfar-skills")
-    ui.print_hint("  More:  agent list --supported   ·   agent setup --recommended")
+    ui.print_hint("  More:  agent list --description   ·   agent plugins list")
+    ui.print_hint("  Also:  agent list --supported   ·   agent setup --recommended")
     ui.print_hint(
         "  Cfg: logged in or has settings on home   "
         "Where: home=$HOME  legacy=$SCRATCH leftover  image=already in the image"
