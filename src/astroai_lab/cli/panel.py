@@ -202,9 +202,7 @@ def panel_models(ctx: typer.Context) -> None:
         )
     payload = {
         "route": route,
-        "key_present": any(
-            catalog.key_to_route().get(k, (None, None))[0] == route for k in keys
-        ),
+        "key_present": any(catalog.key_to_route().get(k, (None, None))[0] == route for k in keys),
         "panel_default": router.panel_default if router else None,
         "roles": rows,
     }
@@ -217,8 +215,7 @@ def panel_models(ctx: typer.Context) -> None:
     for row in rows:
         flag = " !" if row["unknown"] else ""
         ui.print_hint(
-            f"  {row['role']:<19}  {(row['preset'] or '-'):<29}  "
-            f"{(row['catalog'] or '-')}{flag}"
+            f"  {row['role']:<19}  {(row['preset'] or '-'):<29}  {(row['catalog'] or '-')}{flag}"
         )
     if any(r["unknown"] for r in rows):
         ui.print_warn("  ! = preset id not listed for this router in support.yaml")
@@ -241,9 +238,7 @@ def panel_routers(ctx: typer.Context) -> None:
     ui.print_hint("  ──────────────────  ────────────────────  ───────  ────────────")
     for row in rows:
         present = "✓" if row["key_present"] else "-"
-        ui.print_hint(
-            f"  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}"
-        )
+        ui.print_hint(f"  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}")
         if row.get("notes"):
             ui.print_hint(f"    {row['notes']}")
 

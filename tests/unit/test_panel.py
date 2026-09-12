@@ -102,7 +102,6 @@ def test_run_panel_fallback_on_opencode_go_error(
     assert len(calls) == 2
 
 
-
 def test_scaffold_matches_template(tmp_path: Path) -> None:
     from astroai_lab.agent.review_bench import vendored_review_bench_root
 

@@ -272,9 +272,7 @@ def agent_routers_cmd(ctx: typer.Context) -> None:
     ui.print_hint("  ──────────────────  ────────────────────  ───────  ────────────")
     for row in rows:
         present = "✓" if row["key_present"] else "-"
-        ui.print_hint(
-            f"  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}"
-        )
+        ui.print_hint(f"  {row['id']:<18}  {row['key']:<20}  {present:<7}  {row['panel_default']}")
         if row.get("notes"):
             ui.print_hint(f"    {row['notes']}")
 

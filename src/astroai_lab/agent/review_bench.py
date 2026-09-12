@@ -367,8 +367,7 @@ def ensure_dsh_settings(
     if isinstance(notice, dict):
         notice["welcomeNoticeVersion"] = "astroai-panel-2026-09"
         notice["astroaiPanel"] = (
-            "AstroAI Panel — chaired eight-persona review "
-            "(astroai panel run / web)."
+            "AstroAI Panel — chaired eight-persona review (astroai panel run / web)."
         )
     if not dry_run:
         settings.parent.mkdir(parents=True, exist_ok=True)
