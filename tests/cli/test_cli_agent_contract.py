@@ -9,8 +9,8 @@ import json
 
 from typer.testing import CliRunner
 
-from astroai_lab.cli.agent_cmd import agent_app
-from astroai_lab.cli.main import app
+from canfar_lab.cli.agent_cmd import agent_app
+from canfar_lab.cli.main import app
 
 runner = CliRunner()
 
@@ -81,8 +81,8 @@ def test_agent_bare_is_minimal() -> None:
     result = runner.invoke(app, ["agent"])
     assert result.exit_code == 0
     out = result.stdout + result.stderr
-    assert "astroai agent --help" in out
-    assert "astroai agent list" in out
+    assert "canfar agent --help" in out
+    assert "canfar agent list" in out
     assert "agent install kilo" not in out
     assert "list config" not in out
 
@@ -91,7 +91,7 @@ def test_agent_bare_json_points_at_help() -> None:
     result = runner.invoke(app, ["--json", "agent"])
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["help"] == "astroai agent --help"
+    assert payload["help"] == "canfar agent --help"
     assert "list" in payload["try"]
 
 

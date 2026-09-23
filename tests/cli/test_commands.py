@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.cli.main import app
-from astroai_lab.config.settings import get_settings
+from canfar_lab.cli.main import app
+from canfar_lab.config.settings import get_settings
 
 runner = CliRunner()
 
@@ -33,9 +33,8 @@ def lab_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_version_flag() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "astroai" in result.stdout
-    assert "astroai-lab" not in result.stdout
-    from astroai_lab.version import PACKAGE_VERSION
+    assert "canfar-lab" in result.stdout
+    from canfar_lab.version import PACKAGE_VERSION
 
     assert PACKAGE_VERSION in result.stdout
 
@@ -75,16 +74,16 @@ def test_cluster_help_start_status_stop() -> None:
 def test_help_single_command() -> None:
     result = runner.invoke(app, ["help", "--command", "agent"])
     assert result.exit_code == 0
-    assert "Usage: astroai agent" in result.output
+    assert "Usage: lab agent" in result.output
     # Scoped: agent group help shows agent subcommands, not save/resume ones.
     assert "plugins" in result.output
-    assert "Usage: astroai save" not in result.output
+    assert "Usage: lab save" not in result.output
 
 
 def test_help_single_nested_command() -> None:
     result = runner.invoke(app, ["help", "-c", "agent list"])
     assert result.exit_code == 0
-    assert "Usage: astroai agent list" in result.output
+    assert "Usage: lab agent list" in result.output
 
 
 def test_help_unknown_command() -> None:
@@ -139,7 +138,7 @@ def test_default_banner(lab_home: Path) -> None:
     assert "astroai" in result.output.lower() or "work" in result.output.lower()
 
 
-@patch("astroai_lab.cli.banner.cwd_arc_project")
+@patch("canfar_lab.cli.banner.cwd_arc_project")
 def test_banner_with_active_team(mock_cwd, lab_home: Path) -> None:
     active = MagicMock()
     active.name = "demo"
@@ -187,7 +186,7 @@ def test_config_root_json(lab_home: Path) -> None:
     result = runner.invoke(app, ["--json", "config"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
-    assert data["help"] == "astroai config --help"
+    assert data["help"] == "canfar lab config --help"
     assert "show" in data["try"]
 
 

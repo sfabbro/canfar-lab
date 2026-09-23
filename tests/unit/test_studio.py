@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab import studio as studio_mod
-from astroai_lab import studio_profile as sp
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab import studio as studio_mod
+from canfar_lab import studio_profile as sp
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 
@@ -29,9 +29,9 @@ def test_detect_profile_canfar(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _stub_bench(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.agent.review_bench.ensure_review_bench", lambda *a, **k: False)
-    monkeypatch.setattr("astroai_lab.agent.review_bench.ensure_dsh_dotenv", lambda *a, **k: {})
-    monkeypatch.setattr("astroai_lab.agent.review_bench.ensure_dsh_settings", lambda *a, **k: [])
+    monkeypatch.setattr("canfar_lab.agent.review_bench.ensure_review_bench", lambda *a, **k: False)
+    monkeypatch.setattr("canfar_lab.agent.review_bench.ensure_dsh_dotenv", lambda *a, **k: {})
+    monkeypatch.setattr("canfar_lab.agent.review_bench.ensure_dsh_settings", lambda *a, **k: [])
 
 
 def test_prepare_studio_writes_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -81,8 +81,8 @@ def test_studio_web_cmd_requires_a_real_dsh(
     """No npx shim: npm >= 10 swallows the launcher flags Studio needs."""
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setattr("astroai_lab.studio.shutil.which", lambda *_: None)
-    monkeypatch.setattr("astroai_lab.studio._DSH_SEARCH_PATHS", ())
+    monkeypatch.setattr("canfar_lab.studio.shutil.which", lambda *_: None)
+    monkeypatch.setattr("canfar_lab.studio._DSH_SEARCH_PATHS", ())
     monkeypatch.delenv("ASTROAI_STUDIO_DSH", raising=False)
     assert studio_mod.dsh_binary() is None
     with pytest.raises(LabError) as excinfo:
@@ -139,7 +139,7 @@ def test_dsh_binary_finds_scratch_managed_bin(
     binary.write_text("#!/bin/sh\n", encoding="utf-8")
     binary.chmod(0o755)
     monkeypatch.delenv("ASTROAI_STUDIO_DSH", raising=False)
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(scratch_bin))
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(scratch_bin))
     monkeypatch.setenv("SCRATCH", str(tmp_path / "scratch"))
     monkeypatch.setattr(studio_mod.shutil, "which", lambda _: None)
     assert studio_mod.dsh_binary() == str(binary)
@@ -196,9 +196,9 @@ def test_dsh_version_pin_matches_agent_yaml() -> None:
 
     import yaml
 
-    from astroai_lab.agent import review_bench as rb
+    from canfar_lab.agent import review_bench as rb
 
-    text = (resources.files("astroai_lab") / "data" / "agent" / "agents" / "dsh.yaml").read_text(
+    text = (resources.files("canfar_lab") / "data" / "agent" / "agents" / "dsh.yaml").read_text(
         encoding="utf-8"
     )
     data = yaml.safe_load(text)

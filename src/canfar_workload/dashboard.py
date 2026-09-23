@@ -1,0 +1,317 @@
+"""Ray Dashboard URL resolution + local reverse proxy.
+
+Two surfaces:
+
+1. :func:`resolve_dashboard_url` — derive the Ray Dashboard URL for the current
+   cluster from env, persisted state, or live ``canfar ps`` discovery. Mirrors
+   ``orx-wire-compute.py``'s connect-URL derivation so every consumer agrees.
+
+2. :class:`DashboardProxy` — a small local reverse proxy (stdlib ``http.server``
+   + ``httpx``) that forwards the public manager connectURL ``/dashboard/`` path
+   to a local port. This is how a **notebook / marimo** session (which cannot
+   rely on CANFAR pod-to-pod networking) can embed the native Ray UI: the
+   browser hits the proxy on the session's own port, the proxy fetches the
+   public dashboard URL, and strips frame-busting headers so an iframe works.
+
+Requires the canfar client (no Ray).
+"""
+
+from __future__ import annotations
+
+import contextlib
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+import httpx
+
+_HOP_BY_HOP = frozenset(
+    {
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailers",
+        "transfer-encoding",
+        "upgrade",
+        "host",
+        "content-length",
+    }
+)
+# Frame-busting / CSP headers that would block embedding in notebook iframes.
+_FRAME_HEADERS = frozenset({"x-frame-options", "content-security-policy", "frame-ancestors"})
+
+
+def jobs_url_from_connect(connect_url: str) -> str:
+    """Jobs API address derived from a manager session connect URL."""
+    base = connect_url.rstrip("/") + "/"
+    # Dashboard reverse-proxy exposes the Jobs API under /dashboard/
+    return base + "dashboard"
+
+
+def resolve_dashboard_url(
+    address: str | None = None,
+    *,
+    live: bool = True,
+) -> str | None:
+    """Resolve the Ray Dashboard / Jobs URL for the current cluster.
+
+    Priority:
+      1. Explicit ``address`` or ``CANFAR_RAY_JOBS_ADDRESS`` /
+         ``RAY_DASHBOARD_URL`` (set inside a ray-manager session).
+      2. Live Running/Pending ray-manager with a connect URL (also
+         best-effort persists the URL under ``~/.astroai/ray/clusters/``)
+         — skipped when ``live=False`` (shell ``env export`` / profile).
+      3. Live manager still Pending (no connect URL yet) → ``None`` so callers
+         poll instead of using a stale persisted URL from a previous manager.
+      4. Persisted connect URL under ``~/.astroai/ray/clusters/*/connect-url``,
+         but only when a quick probe succeeds (or the URL session id matches
+         the live manager id). Dead persists are cleared.
+
+    Returns ``None`` when nothing is resolvable.
+    """
+    explicit = address or os.environ.get("CANFAR_RAY_JOBS_ADDRESS", "").strip()
+    if not explicit:
+        explicit = os.environ.get("RAY_DASHBOARD_URL", "").strip()
+    if explicit:
+        return explicit.strip()
+
+    manager_id: str | None = None
+    if live:
+        live_url, manager_visible, manager_id = _live_manager_connect()
+        if live_url:
+            return jobs_url_from_connect(live_url)
+        if manager_visible:
+            return None
+
+    persisted = read_persisted_connect_url()
+    if not persisted:
+        return None
+    if not live:
+        # Shell profile / env export: trust persist without canfar ps or HTTP probes.
+        return jobs_url_from_connect(persisted)
+    if _persisted_connect_is_usable(persisted, manager_id=manager_id):
+        return jobs_url_from_connect(persisted)
+    clear_persisted_connect_urls()
+    return None
+
+
+def _live_manager_connect() -> tuple[str | None, bool, str | None]:
+    """Return ``(connect_url, manager_visible, manager_id)`` from CANFAR listing.
+
+    When a Running manager has a connect URL, best-effort persist it so
+    ``env export`` and later resolution work without another ``canfar ps``.
+    """
+    try:
+        from canfar_workload.canfar_ops import CanfarOps
+
+        ops = CanfarOps()
+        if not ops.auth_status().authenticated:
+            return None, False, None
+        row = ops.find_manager()
+        if not row:
+            return None, False, None
+        connect = str(row.get("connectURL") or row.get("connectUrl") or "").strip()
+        mid = str(row.get("id") or row.get("sessionId") or "").strip() or None
+        if connect:
+            sid = mid or "discovered"
+            with contextlib.suppress(Exception):
+                persist_connect_url(f"mgr-{sid}", connect)
+        return (connect or None), True, mid
+    except Exception:  # noqa: BLE001 — discovery must never raise to callers
+        return None, False, None
+
+
+def _persisted_connect_is_usable(connect_url: str, *, manager_id: str | None) -> bool:
+    """True when persisted URL matches a live manager id or probes successfully."""
+    sid = _session_id_from_connect_url(connect_url)
+    if manager_id and sid and sid == manager_id:
+        return True
+    if sid and manager_id is None:
+        # No live manager; only keep persist if a cheap HTTP probe succeeds.
+        return _probe_manager_url(connect_url)
+    return False
+
+
+def _session_id_from_connect_url(connect_url: str) -> str | None:
+    # https://workloads.canfar.net/session/contrib/<id>[/...]
+    parts = connect_url.rstrip("/").split("/")
+    try:
+        idx = parts.index("session")
+        if idx + 2 < len(parts):
+            return parts[idx + 2] or None
+    except ValueError:
+        pass
+    return parts[-1] if parts else None
+
+
+def _probe_manager_url(connect_url: str) -> bool:
+    base = connect_url.rstrip("/")
+    if base.endswith("/dashboard"):
+        base = base[: -len("/dashboard")]
+    urls = (f"{base}/api/v1/status", f"{base}/dashboard/api/version", base)
+    for url in urls:
+        try:
+            resp = httpx.get(url, timeout=3.0)
+            # Only 2xx means the manager is actually reachable; 404 from a dead
+            # session must not keep a stale persisted connect URL.
+            if 200 <= resp.status_code < 300:
+                return True
+        except Exception:  # noqa: BLE001 — probe failures mean unusable
+            continue
+    return False
+
+
+def read_persisted_connect_url() -> str | None:
+    """Newest ``connect-url`` file under ~/.astroai/ray/clusters/*/."""
+    clusters = Path.home() / ".astroai" / "ray" / "clusters"
+    if not clusters.is_dir():
+        return None
+    candidates: list[tuple[float, str]] = []
+    for root in clusters.iterdir():
+        if not root.is_dir():
+            continue
+        path = root / "connect-url"
+        if not path.is_file():
+            continue
+        try:
+            url = path.read_text(encoding="utf-8").strip()
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if url:
+            candidates.append((mtime, url if url.endswith("/") else url + "/"))
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    return candidates[0][1]
+
+
+def persist_connect_url(cluster_id: str, connect_url: str) -> Path:
+    """Record a manager connect URL so later dashboard resolution finds it."""
+    from canfar_lab.utils.json_utils import atomic_write_text
+    from canfar_workload.state_store import cluster_state_dir
+
+    path = cluster_state_dir(cluster_id) / "connect-url"
+    atomic_write_text(path, connect_url.rstrip("/") + "/")
+    return path
+
+
+def clear_persisted_connect_urls() -> int:
+    """Delete every persisted ``connect-url`` file. Returns how many were removed.
+
+    Called on cluster teardown so resolution never points at a dead manager.
+    """
+    clusters = Path.home() / ".astroai" / "ray" / "clusters"
+    if not clusters.is_dir():
+        return 0
+    removed = 0
+    for root in clusters.iterdir():
+        path = root / "connect-url" if root.is_dir() else None
+        if path and path.is_file():
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                continue
+    return removed
+
+
+def dashboard_iframe_html(url: str, *, height: int = 900) -> str:
+    """HTML snippet embedding the native Ray Dashboard in a notebook/marimo cell."""
+    return (
+        f'<iframe src="{url}" width="100%" height="{height}" '
+        'style="border:1px solid #24332a;border-radius:8px;background:#fff" '
+        'sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>'
+    )
+
+
+class DashboardProxy:
+    """Local reverse proxy → manager connectURL ``/dashboard/``.
+
+    Runs a ``ThreadingHTTPServer`` on 127.0.0.1:*port*; every request is
+    forwarded (method + body + filtered headers) to ``upstream + path`` and the
+    response is streamed back with frame-busting headers stripped so the native
+    Ray Dashboard can be embedded in a notebook/marimo iframe.
+
+    WebSocket endpoints are not proxied (``http.server`` is HTTP-only); the
+    Dashboard's core jobs/nodes/metrics views work over HTTP.
+    """
+
+    def __init__(self, upstream: str, *, host: str = "127.0.0.1", port: int = 0) -> None:
+        self.upstream = upstream.rstrip("/")
+        self.host = host
+        self.port = port
+        self._server: ThreadingHTTPServer | None = None
+        self._thread: threading.Thread | None = None
+
+    def _handler_factory(self) -> type[BaseHTTPRequestHandler]:
+        proxy = self
+
+        class _Handler(BaseHTTPRequestHandler):
+            def _forward(self) -> None:
+                target = proxy.upstream + self.path
+                headers = {
+                    k: v
+                    for k, v in self.headers.items()
+                    if k.lower() not in _HOP_BY_HOP and k.lower() not in _FRAME_HEADERS
+                }
+                headers["Host"] = httpx.URL(proxy.upstream).host
+                body = None
+                length = self.headers.get("Content-Length")
+                if length:
+                    body = self.rfile.read(int(length))
+                try:
+                    with httpx.Client(timeout=None, follow_redirects=False) as client:
+                        resp = client.request(
+                            self.command,
+                            target,
+                            headers=headers,
+                            content=body,
+                        )
+                except httpx.HTTPError as exc:
+                    self.send_error(502, f"upstream unreachable: {exc}")
+                    return
+                self.send_response(resp.status_code)
+                for key, value in resp.headers.items():
+                    if key.lower() not in _HOP_BY_HOP and key.lower() not in _FRAME_HEADERS:
+                        self.send_header(key, value)
+                self.end_headers()
+                for chunk in resp.iter_bytes():
+                    try:
+                        self.wfile.write(chunk)
+                    except (BrokenPipeError, ConnectionResetError):
+                        break
+
+            do_GET = _forward  # type: ignore[assignment]
+            do_POST = _forward  # type: ignore[assignment]
+            do_PUT = _forward  # type: ignore[assignment]
+            do_PATCH = _forward  # type: ignore[assignment]
+            do_DELETE = _forward  # type: ignore[assignment]
+            do_HEAD = _forward  # type: ignore[assignment]
+            do_OPTIONS = _forward  # type: ignore[assignment]
+
+            def log_message(self, *args: Any) -> None:  # noqa: ANN001 — keep quiet
+                return
+
+        return _Handler
+
+    def start(self) -> None:
+        handler = self._handler_factory()
+        self._server = ThreadingHTTPServer((self.host, self.port), handler)
+        self.port = int(self._server.server_address[1])
+        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._server is not None:
+            self._server.shutdown()
+            self._server.server_close()
+            self._server = None
+
+    @property
+    def url(self) -> str:
+        return f"http://{self.host}:{self.port}/"

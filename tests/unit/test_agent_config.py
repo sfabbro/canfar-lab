@@ -13,9 +13,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent import agent_config as ac
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab.agent import agent_config as ac
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 
@@ -107,7 +107,7 @@ def test_read_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     home.mkdir()
     # Block setup so a truly missing config still errors (no silent invent).
     monkeypatch.setattr(
-        "astroai_lab.agent.registry.setup_registry_agent",
+        "canfar_lab.agent.registry.setup_registry_agent",
         lambda *a, **k: {"ok": True, "errors": [], "actions": [], "agent": "hermes"},
     )
     with pytest.raises(LabError, match="config not found"):
@@ -139,7 +139,7 @@ def test_read_missing_cline_auto_setup(tmp_path: Path, monkeypatch: pytest.Monke
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [],
     )
     path, data = ac.read_agent_config("cline", home=home)
@@ -155,7 +155,7 @@ def test_read_missing_hermes_still_errors_when_setup_cannot_create(
     home.mkdir()
     # hermes has no config bundle that writes config.yaml — scaffold creates it.
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [],
     )
     path, data = ac.read_agent_config("hermes", home=home)
@@ -383,7 +383,7 @@ def test_cli_config_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("HOME", str(tmp_path))
     # Setup would scaffold hermes; stub it so "missing" stays missing.
     monkeypatch.setattr(
-        "astroai_lab.agent.registry.setup_registry_agent",
+        "canfar_lab.agent.registry.setup_registry_agent",
         lambda *a, **k: {"ok": True, "errors": [], "actions": [], "agent": "hermes"},
     )
     result = runner.invoke(app, ["--json", "agent", "config", "hermes"])
@@ -394,7 +394,7 @@ def test_cli_config_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 def test_cli_config_codewhale_seeds_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [],
     )
     result = runner.invoke(app, ["agent", "config", "codewhale"])
@@ -410,7 +410,7 @@ def test_cli_config_pi_seeds_settings(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-key")
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [],
     )
     result = runner.invoke(app, ["agent", "config", "pi"])
@@ -427,7 +427,7 @@ def test_cli_config_pi_seeds_settings(tmp_path: Path, monkeypatch: pytest.Monkey
 
 def test_cli_install_cline_runs_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Regression: install printed `agent config cline` but never wrote notes."""
-    from astroai_lab.cli import agent_cmd as agent_cmd_mod
+    from canfar_lab.cli import agent_cmd as agent_cmd_mod
 
     home = tmp_path / "home"
     bin_dir = tmp_path / "bin"
@@ -435,20 +435,20 @@ def test_cli_install_cline_runs_setup(tmp_path: Path, monkeypatch: pytest.Monkey
     bin_dir.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(agent_cmd_mod, "user_bin_dir", lambda: bin_dir)
-    monkeypatch.setattr("astroai_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
     monkeypatch.setattr(
-        "astroai_lab.agent.registry._install_npm",
+        "canfar_lab.agent.registry._install_npm",
         lambda agent: (bin_dir / "cline").write_text("#!/bin/sh\n") or "cline",
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [],
     )
     # cline is registry-only (not in TOOLS) — install_registry_agent path.
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     tools = {k: v for k, v in install_mod.TOOLS.items() if k != "cline"}
-    monkeypatch.setattr("astroai_lab.agent.install.TOOLS", tools, raising=False)
+    monkeypatch.setattr("canfar_lab.agent.install.TOOLS", tools, raising=False)
 
     result = runner.invoke(app, ["--yes", "agent", "install", "cline"])
     assert result.exit_code == 0, result.output

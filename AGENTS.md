@@ -1,7 +1,9 @@
 # AGENTS.md — canfar-lab
 
-In-session AstroAI lab CLI (`astroai`) and related tooling. CANFAR is the
-platform; AstroAI is the product surface inside the session.
+In-session CANFAR Science Platform workbench and workload tooling (`canfar-lab`).
+CANFAR is the platform; `canfar-lab` provides extension subcommands for the `canfar`
+CLI (`canfar sync`, `canfar lab`, `canfar cluster`, `canfar run`, `canfar jobs`, `canfar agent`),
+plus the standalone `canfar-lab` CLI.
 
 ## Remotes (AstroAI fork workflow)
 
@@ -17,7 +19,7 @@ Never force-push `astroai` `main`.
 git fetch upstream && git rebase upstream/main
 # edit on main
 git push origin main
-gh pr create -R astroai/canfar-lab --head sfabbro:main
+gh pr create -R astroai/canfar-lab --head <github_user>:main
 ```
 
 ## Environment
@@ -32,8 +34,8 @@ pixi install
 
 ```bash
 ./scripts/ci.sh                 # lint, format, typecheck, CLI audit, pytest
-astroai studio --doctor         # Studio pre-flight (needs dsh on PATH)
-astroai panel doctor            # headless Team / review-bench
+canfar lab studio --doctor      # Studio pre-flight (needs dsh on PATH)
+canfar lab panel doctor         # headless Team / review-bench
 ```
 
 Harness verify tasks in `.cursor/harness/config.json` map to the same gate.
@@ -41,8 +43,8 @@ Harness verify tasks in `.cursor/harness/config.json` map to the same gate.
 ## In-session project template
 
 The AGENTS template copied into user projects lives under
-`src/astroai_lab/data/agent/project/AGENTS.md`. Edit that file when changing
-what lab users see after `astroai agent setup`, not only this root file.
+`src/canfar_lab/data/agent/project/AGENTS.md`. Edit that file when changing
+what lab users see after `canfar agent setup`, not only this root file.
 
 Workspace layout and `/arc` rules (`PYTHONNOUSERSITE`, no `$HOME/.local`
 installs): parent workspace `AGENTS.md` (`~/src/AGENTS.md`).
@@ -53,7 +55,7 @@ installs): parent workspace `AGENTS.md` (`~/src/AGENTS.md`).
 - Never `pip install --user` or install into `~/.local` / `$HOME/.local` (esp. CANFAR `/arc/home`).
 - Headless/batch: `export PYTHONNOUSERSITE=1` and `unset PYTHONPATH`.
 - On CANFAR: code under `$WORK` → `/scratch/src` (session-ephemeral). Prefer
-  `astroai clone <fork> --update` to refresh source; `save`/`resume` are deps only.
+  `canfar sync` / `canfar lab clone <fork> --update` to refresh source; `save`/`resume` are deps only.
   See `docs/USAGE.md` → Getting code onto jobs; skill `canfar-lab-workflow`.
 - Session images: always `images.canfar.net/astroai/*` — **never** `skaha/*`.
 
@@ -63,10 +65,10 @@ On CANFAR, code lives under `$WORK` → **`$SCRATCH/src`** (session-ephemeral).
 Workers do not see another pod's `/scratch`. Pick a mode before jobs:
 
 1. **GitHub push → pull** (default): push fork `origin`, then
-   `astroai clone <fork/repo> --update` (or `--ref <sha>`). Prints HEAD SHA.
-2. **`astroai save` / `resume`**: lockfiles / env only — **not** source.
+   `canfar sync` or `canfar lab clone <fork/repo> --update` (or `--ref <sha>`). Prints HEAD SHA.
+2. **`canfar lab save` / `resume`**: lockfiles / env only — **not** source.
 3. **VOSpace tarball** under `vos:$USER/astroai/` (pack deps yourself; no CLI yet).
 4. **2 + 3** for reproducible headless (env snapshot + code blob).
 
-Same-session Ray: `astroai run` packages local `working_dir`. Details:
+Same-session Ray: `canfar run` packages local `working_dir`. Details:
 `docs/USAGE.md` § Code propagation.

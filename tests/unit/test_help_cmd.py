@@ -8,8 +8,8 @@ import pytest
 import typer
 from typer.main import get_command
 
-import astroai_lab.cli.help_cmd as help_cmd
-from astroai_lab.cli.main import app
+import canfar_lab.cli.help_cmd as help_cmd
+from canfar_lab.cli.main import app
 
 
 def _expected_paths() -> list[tuple[str, ...]]:
@@ -55,13 +55,13 @@ def test_top_level_commands_sorted() -> None:
     assert tops == sorted(tops)
 
 
-@patch("astroai_lab.cli.help_cmd.typer.echo")
-@patch("astroai_lab.cli.help_cmd.subprocess.run")
+@patch("canfar_lab.cli.help_cmd.typer.echo")
+@patch("canfar_lab.cli.help_cmd.subprocess.run")
 def test_emit_pages_via_less_on_tty(mock_run, mock_echo) -> None:
     text = "\n".join(f"line {i}" for i in range(60))
     with (
-        patch("astroai_lab.cli.help_cmd.sys.stdout.isatty", return_value=True),
-        patch("astroai_lab.cli.help_cmd.shutil.which", return_value="/usr/bin/less"),
+        patch("canfar_lab.cli.help_cmd.sys.stdout.isatty", return_value=True),
+        patch("canfar_lab.cli.help_cmd.shutil.which", return_value="/usr/bin/less"),
     ):
         help_cmd._emit(text)
     mock_run.assert_called_once()
@@ -70,22 +70,22 @@ def test_emit_pages_via_less_on_tty(mock_run, mock_echo) -> None:
     mock_echo.assert_not_called()
 
 
-@patch("astroai_lab.cli.help_cmd.typer.echo")
-@patch("astroai_lab.cli.help_cmd.subprocess.run")
+@patch("canfar_lab.cli.help_cmd.typer.echo")
+@patch("canfar_lab.cli.help_cmd.subprocess.run")
 def test_emit_plain_when_not_tty(mock_run, mock_echo) -> None:
     text = "\n".join(f"line {i}" for i in range(60))
-    with patch("astroai_lab.cli.help_cmd.sys.stdout.isatty", return_value=False):
+    with patch("canfar_lab.cli.help_cmd.sys.stdout.isatty", return_value=False):
         help_cmd._emit(text)
     mock_run.assert_not_called()
     mock_echo.assert_called_once_with(text)
 
 
-@patch("astroai_lab.cli.help_cmd.typer.echo")
-@patch("astroai_lab.cli.help_cmd.subprocess.run")
+@patch("canfar_lab.cli.help_cmd.typer.echo")
+@patch("canfar_lab.cli.help_cmd.subprocess.run")
 def test_emit_plain_when_short(mock_run, mock_echo) -> None:
     with (
-        patch("astroai_lab.cli.help_cmd.sys.stdout.isatty", return_value=True),
-        patch("astroai_lab.cli.help_cmd.shutil.which", return_value="/usr/bin/less"),
+        patch("canfar_lab.cli.help_cmd.sys.stdout.isatty", return_value=True),
+        patch("canfar_lab.cli.help_cmd.shutil.which", return_value="/usr/bin/less"),
     ):
         help_cmd._emit("short\nhelp")
     mock_run.assert_not_called()
@@ -108,7 +108,7 @@ def test_unknown_path_error_json_emits_structured_error() -> None:
         captured.append(data)
 
     with (
-        patch("astroai_lab.cli.help_cmd.ui.print_json", side_effect=_capture),
+        patch("canfar_lab.cli.help_cmd.ui.print_json", side_effect=_capture),
         pytest.raises(typer.Exit) as exc,
     ):
         help_cmd._unknown_path_error(app, "nope", json_output=True)
@@ -210,7 +210,7 @@ def _capture_aggregate() -> str:
     def _capture(text: str) -> None:
         captured.append(text)
 
-    with patch("astroai_lab.cli.help_cmd._emit", side_effect=_capture):
+    with patch("canfar_lab.cli.help_cmd._emit", side_effect=_capture):
         help_cmd.print_all_help(app)
 
     assert len(captured) == 1

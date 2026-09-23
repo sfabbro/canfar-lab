@@ -9,7 +9,7 @@ concurrently, and the guarantees `astroai` makes.
 | State | Location | Why |
 |-------|----------|-----|
 | Agent configs (MCP servers, settings, skills) | `$HOME` (`~/.cursor`, `~/.claude.json`, …) | Durable, small, read-mostly; shared so every session is configured identically |
-| Agent CLIs | `$SCRATCH/.local/bin` (via `ASTROAI_LAB_BIN_DIR`) | Fast local disk — `/arc/home` NFS is too slow for CLI installs/updates |
+| Agent CLIs | `$SCRATCH/.local/bin` (via `CANFAR_LAB_BIN_DIR`) | Fast local disk — `/arc/home` NFS is too slow for CLI installs/updates |
 | Auth (`canfar`, `gh`, tokens) | `$HOME` | Must survive sessions |
 | Env saves / lab state (`~/.astroai/lab`) | `$HOME` | Explicit snapshots + stamps |
 | Ray cluster state (`~/.astroai/ray`) | `$HOME` | Written by the manager and CLI control plane |

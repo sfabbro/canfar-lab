@@ -39,7 +39,7 @@ astroai cluster start --max-workers 8 --cores 2 --ram 8
 astroai cluster start --min-workers 1 --gpus 1 --timeout 1800
 ```
 
-Prints `export ASTROAI_RAY_JOBS_ADDRESS=…` (optional override). Discovery is
+Prints `export CANFAR_RAY_JOBS_ADDRESS=…` (optional override). Discovery is
 automatic when a manager is Running. `--json` returns
 `manager_url`, `jobs_address`, `dashboard_url`, `cluster_phase`,
 `joined_workers`, and `autoscaling`.

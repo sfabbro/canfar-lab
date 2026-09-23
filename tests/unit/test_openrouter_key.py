@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.agent.setup import (
+from canfar_lab.agent.setup import (
     OPENROUTER_KEY_ENV,
     discover_openrouter_key,
     ensure_openrouter_dotenv,
@@ -63,7 +63,7 @@ def test_ensure_persists_marimo_key_to_shared_dotenv(
 def test_merge_marimo_seeds_api_key_and_runtime_dotenv(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent.setup import _merge_marimo_openrouter
+    from canfar_lab.agent.setup import _merge_marimo_openrouter
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     monkeypatch.setenv(OPENROUTER_KEY_ENV, "sk-setup-key")
@@ -82,7 +82,7 @@ def test_merge_marimo_seeds_api_key_and_runtime_dotenv(
 
 
 def test_merge_marimo_replaces_pip_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent.setup import _merge_marimo_openrouter
+    from canfar_lab.agent.setup import _merge_marimo_openrouter
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     cfg = tmp_path / ".marimo.toml"

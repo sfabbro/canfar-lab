@@ -13,10 +13,10 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.install import uninstall_tool
-from astroai_lab.agent.registry import remove_registry_agent
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab.agent.install import uninstall_tool
+from canfar_lab.agent.registry import remove_registry_agent
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 
@@ -26,7 +26,7 @@ def _fake_session_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tupl
 
     Both ``install.uninstall_tool`` and ``registry._remove_registry_method``
     call the module-level ``install._bin_dir``/``_npm_prefix`` (the latter via
-    a lazy ``from astroai_lab.agent.install import _bin_dir, _npm_prefix``),
+    a lazy ``from canfar_lab.agent.install import _bin_dir, _npm_prefix``),
     so patching the install namespace is sufficient. ``shutil.which`` is
     patched so the best-effort npm-uninstall guard never fires.
     """
@@ -34,11 +34,11 @@ def _fake_session_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tupl
     npm_prefix = tmp_path / "npm"
     bin_dir.mkdir(parents=True, exist_ok=True)
     (npm_prefix / "bin").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr("astroai_lab.agent.install._bin_dir", lambda: bin_dir)
-    monkeypatch.setattr("astroai_lab.agent.install._npm_prefix", lambda: npm_prefix)
-    monkeypatch.setattr("astroai_lab.agent.install.shutil.which", lambda _: None)
+    monkeypatch.setattr("canfar_lab.agent.install._bin_dir", lambda: bin_dir)
+    monkeypatch.setattr("canfar_lab.agent.install._npm_prefix", lambda: npm_prefix)
+    monkeypatch.setattr("canfar_lab.agent.install.shutil.which", lambda _: None)
     # Registry-only removal runs `npm uninstall` via install.run — no-op it.
-    monkeypatch.setattr("astroai_lab.agent.install.run", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.run", lambda *a, **k: None)
     return bin_dir, npm_prefix
 
 
@@ -162,8 +162,8 @@ def test_uninstall_tool_npm_run_is_quiet(tmp_path: Path, monkeypatch: pytest.Mon
     home = tmp_path / "home"
     _make_installed(bin_dir, "openclaw", home, ".openclaw/openclaw.json")
     calls: list[dict] = []
-    monkeypatch.setattr("astroai_lab.agent.install.run", lambda *a, **k: calls.append(k))
-    monkeypatch.setattr("astroai_lab.agent.install.shutil.which", lambda _: "/usr/bin/npm")
+    monkeypatch.setattr("canfar_lab.agent.install.run", lambda *a, **k: calls.append(k))
+    monkeypatch.setattr("canfar_lab.agent.install.shutil.which", lambda _: "/usr/bin/npm")
 
     uninstall_tool("openclaw", home=home)
     assert calls, "npm uninstall should fire for npm-installed tools"
@@ -195,7 +195,7 @@ def test_remove_registry_agent_unknown() -> None:
 
 def test_remove_registry_agent_method_npm(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Registry-only (non-TOOLS) agent with install.method=npm is removed."""
-    from astroai_lab.agent import registry as registry_mod
+    from canfar_lab.agent import registry as registry_mod
 
     bin_dir, npm_prefix = _fake_session_paths(monkeypatch, tmp_path)
     home = tmp_path / "home"
@@ -227,7 +227,7 @@ def test_remove_registry_agent_method_npm_run_is_quiet(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Registry npm-method removal also runs `npm uninstall` with quiet=True."""
-    from astroai_lab.agent import registry as registry_mod
+    from canfar_lab.agent import registry as registry_mod
 
     bin_dir, _ = _fake_session_paths(monkeypatch, tmp_path)
     home = tmp_path / "home"
@@ -241,7 +241,7 @@ def test_remove_registry_agent_method_npm_run_is_quiet(
         "config": {"path": "~/.regonly/config.json"},
     }
     calls: list[dict] = []
-    monkeypatch.setattr("astroai_lab.agent.install.run", lambda *a, **k: calls.append(k))
+    monkeypatch.setattr("canfar_lab.agent.install.run", lambda *a, **k: calls.append(k))
     monkeypatch.setattr(registry_mod, "get_registry_agent", lambda _: agent)
     # registry._remove_registry_method imports stdlib shutil directly.
     import shutil

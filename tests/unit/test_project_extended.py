@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from astroai_lab.core.project import (
+from canfar_lab.core.project import (
     detect_project,
     format_dir_size,
     install_project,
@@ -18,8 +18,8 @@ from astroai_lab.core.project import (
     warm_cache,
     write_manifest,
 )
-from astroai_lab.errors import LabError
-from astroai_lab.models.manifest import EnvManifest, ProjectKind
+from canfar_lab.errors import LabError
+from canfar_lab.models.manifest import EnvManifest, ProjectKind
 
 
 def _pixi(path: Path) -> None:
@@ -101,7 +101,7 @@ def test_save_env_full_packs(tmp_path: Path) -> None:
     def popen(cmd: list[str], **_kwargs: object) -> MagicMock:
         return mock_tar if cmd[0] == "tar" else mock_zstd
 
-    with patch("astroai_lab.core.project.subprocess.Popen", side_effect=popen):
+    with patch("canfar_lab.core.project.subprocess.Popen", side_effect=popen):
         save_env("proj", tmp_path / "save", project, full=True)
     assert (tmp_path / "save" / "env.tar.zst").exists()
     assert read_manifest(tmp_path / "save" / "manifest.json").full is True
@@ -113,7 +113,7 @@ def test_restore_env_installs_when_not_full(tmp_path: Path) -> None:
     save_dir = tmp_path / "save"
     save_env("proj", save_dir, project)
     dest = tmp_path / "restored"
-    with patch("astroai_lab.core.project.install_project") as install:
+    with patch("canfar_lab.core.project.install_project") as install:
         restore_env(save_dir, dest)
     install.assert_called_once_with(dest)
 
@@ -132,8 +132,8 @@ def test_restore_env_full_unpacks(tmp_path: Path) -> None:
     mock_zstd.stdout = MagicMock()
     mock_zstd.returncode = 0
     with (
-        patch("astroai_lab.core.project.subprocess.Popen", return_value=mock_zstd),
-        patch("astroai_lab.core.project.subprocess.run") as mock_run,
+        patch("canfar_lab.core.project.subprocess.Popen", return_value=mock_zstd),
+        patch("canfar_lab.core.project.subprocess.run") as mock_run,
     ):
         restore_env(save_dir, tmp_path / "dest")
     mock_run.assert_called_once()
@@ -141,7 +141,7 @@ def test_restore_env_full_unpacks(tmp_path: Path) -> None:
 
 def test_install_project_pixi(tmp_path: Path) -> None:
     _pixi(tmp_path)
-    with patch("astroai_lab.core.project.run") as mock_run:
+    with patch("canfar_lab.core.project.run") as mock_run:
         install_project(tmp_path)
     mock_run.assert_called_with(["pixi", "install"], cwd=tmp_path, quiet=False)
 
@@ -149,8 +149,8 @@ def test_install_project_pixi(tmp_path: Path) -> None:
 def test_install_project_uv_bootstrap(tmp_path: Path) -> None:
     _uv(tmp_path)
     with (
-        patch("astroai_lab.core.project._run_uv_sync", return_value=False),
-        patch("astroai_lab.core.project.run") as mock_run,
+        patch("canfar_lab.core.project._run_uv_sync", return_value=False),
+        patch("canfar_lab.core.project.run") as mock_run,
     ):
         install_project(tmp_path, bootstrap_lock=True)
     assert mock_run.call_count >= 2
@@ -159,8 +159,8 @@ def test_install_project_uv_bootstrap(tmp_path: Path) -> None:
 def test_install_project_bootstrap_skips_second_when_first_ok(tmp_path: Path) -> None:
     _pixi(tmp_path)
     with (
-        patch("astroai_lab.core.project._run_pixi_install", return_value=True) as first,
-        patch("astroai_lab.core.project.run") as mock_run,
+        patch("canfar_lab.core.project._run_pixi_install", return_value=True) as first,
+        patch("canfar_lab.core.project.run") as mock_run,
     ):
         install_project(tmp_path, bootstrap_lock=True)
     first.assert_called_once()
@@ -179,7 +179,7 @@ def test_warm_cache_pixi(tmp_path: Path) -> None:
         user="u",
     )
     write_manifest(save_dir / "manifest.json", manifest)
-    with patch("astroai_lab.core.project.run") as mock_run:
+    with patch("canfar_lab.core.project.run") as mock_run:
         warm_cache(save_dir)
     mock_run.assert_called_once()
 
@@ -196,16 +196,16 @@ def test_warm_cache_uv(tmp_path: Path) -> None:
         user="u",
     )
     write_manifest(save_dir / "manifest.json", manifest)
-    with patch("astroai_lab.core.project.run") as mock_run:
+    with patch("canfar_lab.core.project.run") as mock_run:
         warm_cache(save_dir)
     mock_run.assert_called_once()
 
 
 def test_init_project_mocked(tmp_path: Path) -> None:
-    from astroai_lab.core.project import init_project
+    from canfar_lab.core.project import init_project
 
     target = tmp_path / "new"
-    with patch("astroai_lab.core.project.run") as mock_run:
+    with patch("canfar_lab.core.project.run") as mock_run:
         kind = init_project(target, use_uv=True)
     assert kind == ProjectKind.UV
     mock_run.assert_called_once()
@@ -224,7 +224,7 @@ def test_save_kind_switch_drops_previous_kind(tmp_path: Path) -> None:
     assert not (save_dir / "pixi.lock").exists()
     assert (save_dir / "pyproject.toml").is_file()
     dest = tmp_path / "out"
-    with patch("astroai_lab.core.project.install_project"):
+    with patch("canfar_lab.core.project.install_project"):
         restore_env(save_dir, dest)
     assert detect_project(dest) == ProjectKind.UV
     assert not (dest / "pixi.toml").exists()
@@ -239,7 +239,7 @@ def test_save_full_failure_leaves_previous(tmp_path: Path) -> None:
     (project / ".pixi" / "x").write_text("x")
     with (
         patch(
-            "astroai_lab.core.project.tar_zst",
+            "canfar_lab.core.project.tar_zst",
             side_effect=LabError("Failed to compress environment pack"),
         ),
         pytest.raises(LabError, match="compress"),
@@ -266,7 +266,7 @@ def test_tar_zst_raises_on_zstd_failure(tmp_path: Path) -> None:
         return mock_tar if cmd[0] == "tar" else mock_zstd
 
     with (
-        patch("astroai_lab.core.project.subprocess.Popen", side_effect=popen),
+        patch("canfar_lab.core.project.subprocess.Popen", side_effect=popen),
         pytest.raises(LabError, match="compress"),
     ):
         tar_zst(src, tmp_path / "out.tar.zst", arcname="env")
@@ -289,9 +289,9 @@ def test_restore_unpack_tar_failure_is_lab_error(tmp_path: Path) -> None:
     mock_zstd.returncode = 0
     mock_zstd.communicate.return_value = (b"", b"")
     with (
-        patch("astroai_lab.core.project.subprocess.Popen", return_value=mock_zstd),
+        patch("canfar_lab.core.project.subprocess.Popen", return_value=mock_zstd),
         patch(
-            "astroai_lab.core.project.subprocess.run",
+            "canfar_lab.core.project.subprocess.run",
             side_effect=sp.CalledProcessError(2, ["tar", "-xf", "-"]),
         ),
         pytest.raises(LabError, match="unpack"),
@@ -300,7 +300,7 @@ def test_restore_unpack_tar_failure_is_lab_error(tmp_path: Path) -> None:
 
 
 def test_save_refuses_high_quota(tmp_path: Path) -> None:
-    from astroai_lab.core.disk_usage import DiskUsage
+    from canfar_lab.core.disk_usage import DiskUsage
 
     project = tmp_path / "proj"
     _pixi(project)
@@ -313,14 +313,14 @@ def test_save_refuses_high_quota(tmp_path: Path) -> None:
         source="ceph-xattr",
     )
     with (
-        patch("astroai_lab.core.disk_usage.disk_usage", return_value=fake),
+        patch("canfar_lab.core.disk_usage.disk_usage", return_value=fake),
         pytest.raises(LabError, match="Quota"),
     ):
         save_env("proj", tmp_path / "save", project)
 
 
 def test_save_refuses_low_free_space(tmp_path: Path) -> None:
-    from astroai_lab.core.disk_usage import DiskUsage
+    from canfar_lab.core.disk_usage import DiskUsage
 
     project = tmp_path / "proj"
     _pixi(project)
@@ -333,14 +333,14 @@ def test_save_refuses_low_free_space(tmp_path: Path) -> None:
         source="statvfs",
     )
     with (
-        patch("astroai_lab.core.disk_usage.disk_usage", return_value=fake),
+        patch("canfar_lab.core.disk_usage.disk_usage", return_value=fake),
         pytest.raises(LabError, match="Low disk space"),
     ):
         save_env("proj", tmp_path / "save", project)
 
 
 def test_save_allows_statvfs_high_pct_with_free_space(tmp_path: Path) -> None:
-    from astroai_lab.core.disk_usage import DiskUsage
+    from canfar_lab.core.disk_usage import DiskUsage
 
     project = tmp_path / "proj"
     _pixi(project)
@@ -352,12 +352,12 @@ def test_save_allows_statvfs_high_pct_with_free_space(tmp_path: Path) -> None:
         pct=99,
         source="statvfs",
     )
-    with patch("astroai_lab.core.disk_usage.disk_usage", return_value=fake):
+    with patch("canfar_lab.core.disk_usage.disk_usage", return_value=fake):
         save_env("proj", tmp_path / "save", project)
     assert (tmp_path / "save" / "pixi.toml").is_file()
 
 
 def test_resolve_save_dir_hint_is_save_not_env_save(tmp_path: Path) -> None:
-    with pytest.raises(LabError, match="astroai save missing") as exc:
+    with pytest.raises(LabError, match="canfar lab save missing") as exc:
         resolve_save_dir("missing", tmp_path, None)
     assert "env save" not in str(exc.value)

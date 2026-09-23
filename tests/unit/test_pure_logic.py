@@ -10,22 +10,22 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.arc_permissions import (
+from canfar_lab.core.arc_permissions import (
     AclGroupEntry,
     effective_perms,
     parse_getfacl_output,
 )
-from astroai_lab.core.project import (
+from canfar_lab.core.project import (
     detect_project,
     list_saves,
     read_manifest,
     resolve_save_dir,
     save_rows,
 )
-from astroai_lab.core.vospace_status import _vault_groups, gms_name_from_uri
-from astroai_lab.errors import LabError
-from astroai_lab.models.manifest import ProjectKind
-from astroai_lab.shell.session_env import (
+from canfar_lab.core.vospace_status import _vault_groups, gms_name_from_uri
+from canfar_lab.errors import LabError
+from canfar_lab.models.manifest import ProjectKind
+from canfar_lab.shell.session_env import (
     _path_under_roots,
     _session_cache_path,
     _session_runtime_path,
@@ -408,6 +408,12 @@ class TestPathUnderRoots:
 # _session_cache_path tests
 # ===============================================================
 class TestSessionCachePath:
+    @pytest.fixture(autouse=True)
+    def _isolate_home(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        home = tmp_path / "_pure_home"
+        home.mkdir(exist_ok=True)
+        monkeypatch.setenv("HOME", str(home))
+
     def test_env_under_work_without_scratch(
         self,
         tmp_path: Path,
@@ -564,7 +570,7 @@ class TestSessionRuntimePath:
         runtime_dir = scratch / ".runtime-usr" / "uv" / "python"
         runtime_dir.mkdir(parents=True)
         monkeypatch.setenv("UV_PYTHON_INSTALL_DIR", str(runtime_dir))
-        monkeypatch.setenv("ASTROAI_LAB_RUNTIME_ROOT", str(scratch / ".runtime-usr"))
+        monkeypatch.setenv("CANFAR_LAB_RUNTIME_ROOT", str(scratch / ".runtime-usr"))
 
         result = _session_runtime_path(
             "UV_PYTHON_INSTALL_DIR",
@@ -585,7 +591,7 @@ class TestSessionRuntimePath:
         uv_tool = runtime / "uv" / "tools"
         uv_tool.mkdir(parents=True)
         monkeypatch.setenv("UV_TOOL_DIR", str(uv_tool))
-        monkeypatch.setenv("ASTROAI_LAB_RUNTIME_ROOT", str(runtime))
+        monkeypatch.setenv("CANFAR_LAB_RUNTIME_ROOT", str(runtime))
 
         result = _session_runtime_path(
             "UV_TOOL_DIR",
@@ -602,7 +608,7 @@ class TestSessionRuntimePath:
         scratch = tmp_path / "scratch"
         scratch.mkdir()
         monkeypatch.setenv("UV_PYTHON_INSTALL_DIR", "/usr/local/share/uv/python")
-        monkeypatch.setenv("ASTROAI_LAB_RUNTIME_ROOT", str(tmp_path / "runtime"))
+        monkeypatch.setenv("CANFAR_LAB_RUNTIME_ROOT", str(tmp_path / "runtime"))
 
         default = scratch / "default-runtime" / "uv" / "python"
         result = _session_runtime_path(
@@ -656,7 +662,7 @@ class TestSessionRuntimePath:
         mamba = runtime / "micromamba"
         mamba.mkdir(parents=True)
         monkeypatch.setenv("MAMBA_ROOT_PREFIX", str(mamba))
-        monkeypatch.setenv("ASTROAI_LAB_RUNTIME_ROOT", str(runtime))
+        monkeypatch.setenv("CANFAR_LAB_RUNTIME_ROOT", str(runtime))
 
         result = _session_runtime_path(
             "MAMBA_ROOT_PREFIX",
@@ -671,7 +677,7 @@ class TestSessionRuntimePath:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("MAMBA_ROOT_PREFIX", "/usr/local/share/micromamba")
-        monkeypatch.delenv("ASTROAI_LAB_RUNTIME_ROOT", raising=False)
+        monkeypatch.delenv("CANFAR_LAB_RUNTIME_ROOT", raising=False)
 
         default = Path("/tmp/default-mamba")
         result = _session_runtime_path(

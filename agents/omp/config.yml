@@ -1,0 +1,40 @@
+providers:
+  webSearchOrder:
+    []
+  autoThinkingMaxEffort: xhigh
+symbolPreset: unicode
+theme:
+  dark: titanium
+  light: light
+setupVersion: 2
+modelRoles:
+  default: openai-codex/gpt-5.6-sol
+  plan: cursor/claude-opus-5-thinking-max
+  designer: cursor/claude-opus-5-high
+  slow: openai-codex/gpt-5.6-terra
+  task: openai-codex/gpt-5.6-sol
+  advisor: github-copilot/gpt-5.6-terra-1m
+  vision: google-antigravity/gemini-3.7-flash
+  smol: google-antigravity/gemini-3.7-flash
+  tiny: google-antigravity/gemini-3.1-flash-lite
+  commit: opencode-go/glm-5.3
+defaultThinkingLevel: auto
+composer:
+  shape: box
+skills:
+  enableSkillCommands: true
+task:
+  isolation:
+    mode: auto
+  enableEffort: true
+  maxEffort: max
+features:
+  unexpectedStopDetection: smart
+eval:
+  py: true
+tui:
+  renderMermaid: true
+thinkingBudgets:
+  high: 32768
+  xhigh: 32768
+  max: 32768

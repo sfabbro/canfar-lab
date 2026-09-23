@@ -5,7 +5,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from astroai_lab.cli.main import app
+from canfar_lab.cli.main import app
 
 
 def test_env_export(tmp_path: Path, monkeypatch) -> None:
@@ -13,7 +13,7 @@ def test_env_export(tmp_path: Path, monkeypatch) -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["env", "export", "--no-ensure"])
     assert result.exit_code == 0
-    assert "ASTROAI_LAB_BIN_DIR" in result.stdout
+    assert "CANFAR_LAB_BIN_DIR" in result.stdout
     assert "export WORK=" in result.stdout
     assert "export SRCDIR=" in result.stdout
 
@@ -27,7 +27,7 @@ def test_env_export_json(tmp_path: Path, monkeypatch) -> None:
     assert isinstance(data, dict)
     assert data["WORK"] == str(tmp_path)
     assert data["SRCDIR"] == str(tmp_path)
-    assert data["ASTROAI_LAB_BIN_DIR"]
+    assert data["CANFAR_LAB_BIN_DIR"]
 
 
 def test_env_export_json_global_flag(tmp_path: Path, monkeypatch) -> None:
@@ -69,8 +69,8 @@ def test_env_export_json_matches_shell_values(tmp_path: Path, monkeypatch) -> No
     for key in (
         "SRCDIR",
         "WORK",
-        "ASTROAI_LAB_BIN_DIR",
-        "ASTROAI_LAB_RUNTIME_ROOT",
+        "CANFAR_LAB_BIN_DIR",
+        "CANFAR_LAB_RUNTIME_ROOT",
         "XDG_CACHE_HOME",
     ):
         assert data[key] == shell_env[key], f"{key} differs between JSON and shell export"
@@ -84,17 +84,17 @@ def test_env_install_shell_removed(tmp_path: Path) -> None:
 
 
 def test_env_export_includes_persisted_ray_address(tmp_path, monkeypatch) -> None:
-    """A persisted connect-url shows up as ASTROAI_RAY_JOBS_ADDRESS."""
+    """A persisted connect-url shows up as CANFAR_RAY_JOBS_ADDRESS."""
     monkeypatch.setenv("WORK", str(tmp_path))
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
 
     def _boom() -> tuple[None, bool]:
         raise AssertionError("env export must not call live canfar discovery")
 
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect",
+        "canfar_workload.dashboard._live_manager_connect",
         _boom,
     )
     url = tmp_path / ".astroai" / "ray" / "clusters" / "default" / "connect-url"
@@ -103,46 +103,46 @@ def test_env_export_includes_persisted_ray_address(tmp_path, monkeypatch) -> Non
     runner = CliRunner()
     shell = runner.invoke(app, ["env", "export", "--no-ensure"])
     assert shell.exit_code == 0
-    assert "ASTROAI_RAY_JOBS_ADDRESS=https://mgr.example/dashboard" in shell.stdout
+    assert "CANFAR_RAY_JOBS_ADDRESS=https://mgr.example/dashboard" in shell.stdout
     as_json = runner.invoke(app, ["env", "export", "--no-ensure", "--json"])
     data = json.loads(as_json.stdout)
-    assert data["ASTROAI_RAY_JOBS_ADDRESS"] == "https://mgr.example/dashboard"
+    assert data["CANFAR_RAY_JOBS_ADDRESS"] == "https://mgr.example/dashboard"
 
 
 def test_env_export_skips_live_manager_discovery(tmp_path, monkeypatch) -> None:
     """Shell export must not block on canfar ps; live discovery is for jobs."""
     monkeypatch.setenv("WORK", str(tmp_path))
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
 
     def _boom() -> tuple[None, bool]:
         raise AssertionError("env export must not call live canfar discovery")
 
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect",
+        "canfar_workload.dashboard._live_manager_connect",
         _boom,
     )
     runner = CliRunner()
     result = runner.invoke(app, ["env", "export", "--no-ensure", "--json"])
     assert result.exit_code == 0
-    assert "ASTROAI_RAY_JOBS_ADDRESS" not in json.loads(result.stdout)
+    assert "CANFAR_RAY_JOBS_ADDRESS" not in json.loads(result.stdout)
 
 
 def test_env_export_without_ray_state_has_no_ray_address(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("WORK", str(tmp_path))
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
 
     def _boom() -> tuple[None, bool]:
         raise AssertionError("should not live-discover")
 
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect",
+        "canfar_workload.dashboard._live_manager_connect",
         _boom,
     )
     runner = CliRunner()
     result = runner.invoke(app, ["env", "export", "--no-ensure", "--json"])
     assert result.exit_code == 0
-    assert "ASTROAI_RAY_JOBS_ADDRESS" not in json.loads(result.stdout)
+    assert "CANFAR_RAY_JOBS_ADDRESS" not in json.loads(result.stdout)

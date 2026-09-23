@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.agent.fix import fix_agent_setup, repair_installed_agents
-from astroai_lab.agent.inventory import verify_setup
-from astroai_lab.agent.opencode_config import opencode_config_issues, sanitize_opencode_config
-from astroai_lab.agent.registry import fix_registry_agent
-from astroai_lab.utils.json_utils import read_jsonc
+from canfar_lab.agent.fix import fix_agent_setup, repair_installed_agents
+from canfar_lab.agent.inventory import verify_setup
+from canfar_lab.agent.opencode_config import opencode_config_issues, sanitize_opencode_config
+from canfar_lab.agent.registry import fix_registry_agent
+from canfar_lab.utils.json_utils import read_jsonc
 
 
 def test_sanitize_lsp_boolean_entries() -> None:
@@ -69,7 +69,7 @@ def test_verify_reports_opencode_lsp_booleans(
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _classify)
     issues = verify_setup(home)
     assert any("lsp.pyright" in i for i in issues)
     assert any("lsp.clangd" in i for i in issues)
@@ -87,7 +87,7 @@ def test_verify_skips_opencode_lsp_when_not_installed(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         lambda *a, **k: {
             "binary": "x",
             "path": None,
@@ -140,7 +140,7 @@ def test_repair_installed_includes_opencode_sanitize(
     home.mkdir()
     bin_dir.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(bin_dir))
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(bin_dir))
     monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
 
     def _classify(binary: str, *, home=None):
@@ -162,7 +162,7 @@ def test_repair_installed_includes_opencode_sanitize(
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _classify)
     (bin_dir / "opencode").write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
     (bin_dir / "opencode").chmod(0o755)
 

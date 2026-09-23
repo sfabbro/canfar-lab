@@ -6,19 +6,19 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.clean_agent import clean_agent_state
-from astroai_lab.agent.fix import fix_agent_setup
-from astroai_lab.agent.install import TOOLS
-from astroai_lab.agent.interact import inspect_interact_endpoints
-from astroai_lab.agent.registry import list_registry_agents
-from astroai_lab.cli.main import app
+from canfar_lab.agent.clean_agent import clean_agent_state
+from canfar_lab.agent.fix import fix_agent_setup
+from canfar_lab.agent.install import TOOLS
+from canfar_lab.agent.interact import inspect_interact_endpoints
+from canfar_lab.agent.registry import list_registry_agents
+from canfar_lab.cli.main import app
 
 runner = CliRunner()
 
 
 def test_list_covers_all_installable_agents() -> None:
     # Utilities in TOOLS (node / ast-grep) are not agents; hyperfine is image-baked.
-    from astroai_lab.agent.install import TOOL_UTILITIES
+    from canfar_lab.agent.install import TOOL_UTILITIES
 
     ids = {a["id"] for a in list_registry_agents()}
     assert set(TOOLS) - TOOL_UTILITIES <= ids
@@ -119,7 +119,7 @@ def test_cli_agent_verify_clean() -> None:
 def test_cli_agent_verify_fix_sweep(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         lambda *a, **k: {
             "binary": "x",
             "path": None,
@@ -149,7 +149,7 @@ def test_cli_agent_list_hides_description_by_default(
     # Registry summaries mention "agent" tooling; without --description they stay hidden.
     assert "agent list --description" in out
     # A known long summary fragment from hermes.yaml should not appear by default.
-    from astroai_lab.agent.registry import get_registry_agent
+    from canfar_lab.agent.registry import get_registry_agent
 
     summary = (get_registry_agent("hermes") or {}).get("summary") or ""
     assert summary
@@ -158,7 +158,7 @@ def test_cli_agent_list_hides_description_by_default(
 
 def test_cli_agent_list_description_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    from astroai_lab.agent.registry import get_registry_agent
+    from canfar_lab.agent.registry import get_registry_agent
 
     summary = (get_registry_agent("hermes") or {}).get("summary") or ""
     for flag in ("--description",):

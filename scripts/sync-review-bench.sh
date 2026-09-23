@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Sync ~/dsh review-bench sources into src/astroai_lab/data/review-bench/.
+# Sync ~/dsh review-bench sources into src/canfar_lab/data/review-bench/.
 # Single source of truth remains ~/dsh; the pip package ships the copy.
 # CI fails when the copy is stale (run this script, commit the result).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="${DSH_SRC:-$HOME/dsh}"
-DST="$ROOT/src/astroai_lab/data/review-bench"
+DST="$ROOT/src/canfar_lab/data/review-bench"
 
 [ -d "$SRC/presets/review-bench" ] || { echo "missing: $SRC/presets/review-bench" >&2; exit 1; }
 [ -d "$SRC/skills/review-panel" ] || { echo "missing: $SRC/skills/review-panel" >&2; exit 1; }
@@ -26,7 +26,7 @@ import sys
 p = sys.argv[1]
 text = open(p).read()
 old = "      - !!js process.env.HOME + '/dsh/skills'\n"
-new = ("      - !!js (process.env.ASTROAI_LAB_DATA || process.env.HOME + '/.astroai/lab')"
+new = ("      - !!js (process.env.CANFAR_LAB_DATA || process.env.HOME + '/.astroai/lab')"
        " + '/review-bench/skills'\n      - !!js process.env.HOME + '/dsh/skills'\n")
 assert old in text, "upstream preset skill-root line changed — update this script"
 open(p, "w").write(text.replace(old, new))

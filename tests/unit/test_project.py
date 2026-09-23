@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from astroai_lab.core.project import bootstrap_lock, detect_project
-from astroai_lab.models.manifest import EnvManifest, ProjectKind
+from canfar_lab.core.project import bootstrap_lock, detect_project
+from canfar_lab.models.manifest import EnvManifest, ProjectKind
 
 
 def test_detect_project_pixi(tmp_path: Path) -> None:

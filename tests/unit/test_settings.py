@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.config.settings import get_settings
-from astroai_lab.errors import LabError
+from canfar_lab.config.settings import get_settings
+from canfar_lab.errors import LabError
 
 
 @pytest.fixture(autouse=True)

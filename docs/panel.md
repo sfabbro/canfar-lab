@@ -1,6 +1,6 @@
 # AstroAI Panel / Studio Team (`astroai panel` / `astroai review`)
 
-![AstroAI](../src/astroai_lab/data/brand/astroai-logo.png)
+![AstroAI](../src/canfar_lab/data/brand/astroai-logo.png)
 
 Headless-first chaired multi-persona **Team** review (preset **AstroAI Studio
 Team** + `review-panel` skill): freeze → blind-parallel → audit, writing
@@ -48,7 +48,7 @@ astroai studio --skills             # agentskills / skills.sh hint
 | `astroai studio` | coding portal launcher (laptop / prepare for CANFAR image) |
 
 Supported router keys live in
-[`src/astroai_lab/data/agent/support.yaml`](../src/astroai_lab/data/agent/support.yaml).
+[`src/canfar_lab/data/agent/support.yaml`](../src/canfar_lab/data/agent/support.yaml).
 `astroai panel models` is removed — models live in dsh Settings → Models.
 
 ## Surfaces
@@ -59,7 +59,7 @@ Supported router keys live in
 - Laptop browser coding: `astroai studio` (preferred) or `astroai panel web`
   (deprecated alias). On Skaha use the **`astroai/studio`** contributed image —
   not vscode `/proxy/PORT/`.
-- Marimo notebooks: `from astroai_lab.panel import run_panel`.
+- Marimo notebooks: `from canfar_lab.panel import run_panel`.
 
 ## Credentials
 

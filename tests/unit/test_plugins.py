@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.plugins import (
+from canfar_lab.agent.plugins import (
     configure_plugin,
     get_plugin,
     install_plugin,
@@ -23,8 +23,8 @@ from astroai_lab.agent.plugins import (
     remove_plugin,
     update_plugin,
 )
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 
@@ -43,8 +43,8 @@ def _write_plugin_yaml(root: Path, name: str, body: str) -> Path:
 
 
 def test_expand_agent_matrix_aliases() -> None:
-    from astroai_lab.agent.agent_targets import mcp_hosts, skill_hosts
-    from astroai_lab.agent.plugins import expand_agent_matrix
+    from canfar_lab.agent.agent_targets import mcp_hosts, skill_hosts
+    from canfar_lab.agent.plugins import expand_agent_matrix
 
     assert expand_agent_matrix(["skill-hosts"]) == list(skill_hosts())
     assert expand_agent_matrix(["mcp-hosts"]) == list(mcp_hosts())
@@ -74,7 +74,7 @@ def test_load_plugins_ray_manager_mcp() -> None:
     plugin = get_plugin("ray-manager-mcp")
     assert plugin is not None
     assert plugin["kind"] == "mcp"
-    from astroai_lab.agent.agent_targets import mcp_hosts
+    from canfar_lab.agent.agent_targets import mcp_hosts
 
     assert set(plugin["agents"]) == set(mcp_hosts())
     assert plugin["install"]["server"] == "ray-manager"
@@ -182,14 +182,14 @@ def _mcp_plugin_dict() -> dict:
             "entry": {
                 "command": "astroai",
                 "args": ["mcp", "serve"],
-                "env": {"ASTROAI_RAY_JOBS_ADDRESS": "$ASTROAI_RAY_JOBS_ADDRESS"},
+                "env": {"CANFAR_RAY_JOBS_ADDRESS": "$CANFAR_RAY_JOBS_ADDRESS"},
             },
         },
     }
 
 
 def _plugin_ctx(plugin: dict):
-    from astroai_lab.agent import plugins as plugins_mod
+    from canfar_lab.agent import plugins as plugins_mod
 
     original = plugins_mod.get_plugin
 
@@ -224,7 +224,7 @@ def test_configure_mcp_merges_cursor_config(tmp_path: Path) -> None:
     data = json.loads(mcp_file.read_text(encoding="utf-8"))
     assert "ray-manager" in data["mcpServers"]
     assert data["mcpServers"]["ray-manager"]["command"] == "astroai"
-    assert data["mcpServers"]["ray-manager"]["env"]["ASTROAI_RAY_JOBS_ADDRESS"].startswith("$")
+    assert data["mcpServers"]["ray-manager"]["env"]["CANFAR_RAY_JOBS_ADDRESS"].startswith("$")
 
 
 def test_configure_mcp_merges_openclaw_config(tmp_path: Path) -> None:
@@ -244,7 +244,7 @@ def test_configure_mcp_merges_muse_config(tmp_path: Path) -> None:
     assert server["command"] == "astroai"
     assert server["args"] == ["mcp", "serve"]
     assert server["mode"] == "optional"
-    assert server["env"]["ASTROAI_RAY_JOBS_ADDRESS"].startswith("$")
+    assert server["env"]["CANFAR_RAY_JOBS_ADDRESS"].startswith("$")
 
 
 def test_configure_mcp_skip_when_present(tmp_path: Path) -> None:
@@ -294,7 +294,7 @@ def test_install_plugin_unknown() -> None:
 def test_install_plugin_mcp_no_installed_agents(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("astroai_lab.agent.plugins._agent_installed", lambda a, h=None: False)
+    monkeypatch.setattr("canfar_lab.agent.plugins._agent_installed", lambda a, h=None: False)
     results = install_plugin("ray-manager-mcp", home=tmp_path)
     assert len(results) == 1
     assert results[0].status == "skipped"
@@ -302,7 +302,7 @@ def test_install_plugin_mcp_no_installed_agents(
 
 
 def test_install_plugin_mcp_merges(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.agent.plugins._agent_installed", lambda a, h=None: True)
+    monkeypatch.setattr("canfar_lab.agent.plugins._agent_installed", lambda a, h=None: True)
     results = install_plugin("ray-manager-mcp", home=tmp_path, agent="cursor")
     assert len(results) == 1
     assert results[0].status == "installed"
@@ -311,14 +311,14 @@ def test_install_plugin_mcp_merges(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 
 def test_update_plugin_forces_mcp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.agent.plugins._agent_installed", lambda a, h=None: True)
+    monkeypatch.setattr("canfar_lab.agent.plugins._agent_installed", lambda a, h=None: True)
     install_plugin("ray-manager-mcp", home=tmp_path, agent="cursor")
     results = update_plugin("ray-manager-mcp", home=tmp_path, agent="cursor")
     assert all(r.status == "installed" for r in results)
 
 
 def test_remove_plugin_mcp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.agent.plugins._agent_installed", lambda a, h=None: True)
+    monkeypatch.setattr("canfar_lab.agent.plugins._agent_installed", lambda a, h=None: True)
     install_plugin("ray-manager-mcp", home=tmp_path, agent="cursor")
     results = remove_plugin("ray-manager-mcp", home=tmp_path, agent="cursor")
     assert results[0].status == "removed"
@@ -330,7 +330,7 @@ def test_remove_plugin_unknown_agent() -> None:
 
 
 def test_remove_agent_plugin_files_mcp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.agent.plugins._agent_installed", lambda a, h=None: True)
+    monkeypatch.setattr("canfar_lab.agent.plugins._agent_installed", lambda a, h=None: True)
     install_plugin("ray-manager-mcp", home=tmp_path, agent="cursor")
     rows = remove_agent_plugin_files("cursor", home=tmp_path)
     assert any(r["status"] == "removed" for r in rows)

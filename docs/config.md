@@ -18,9 +18,9 @@ Environment variables override YAML:
 | `SRCDIR` | `srcdir` / `work_dir` |
 | `WORK` | `srcdir` / `work_dir` (same path; `SRCDIR` wins if both are set) |
 | `SCRATCH` | `scratch_dir` |
-| `ASTROAI_LAB_SAVE_DIR` | `save_dir` |
-| `ASTROAI_LAB_DEFAULT_PM` | `default_pm` |
-| `ASTROAI_LAB_CLONE_FROM_ENV` | `clone_from_env` |
+| `CANFAR_LAB_SAVE_DIR` | `save_dir` |
+| `CANFAR_LAB_DEFAULT_PM` | `default_pm` |
+| `CANFAR_LAB_CLONE_FROM_ENV` | `clone_from_env` |
 
 Inspect current settings:
 

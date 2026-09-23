@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from astroai_lab.models.manifest import EnvManifest, ProjectKind
+from canfar_lab.models.manifest import EnvManifest, ProjectKind
 
 
 def write_manifest(

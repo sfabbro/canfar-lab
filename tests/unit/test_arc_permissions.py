@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from astroai_lab.core.arc_permissions import (
+from canfar_lab.core.arc_permissions import (
     GETFACL_TIMEOUT_SEC,
     GMS_TIMEOUT_SEC,
     AclGroupEntry,
@@ -57,9 +57,9 @@ def test_read_acl_groups_uses_getfacl(tmp_path: Path) -> None:
     proj = tmp_path / "proj"
     proj.mkdir()
     with (
-        patch("astroai_lab.core.arc_permissions.shutil.which", return_value="getfacl"),
+        patch("canfar_lab.core.arc_permissions.shutil.which", return_value="getfacl"),
         patch(
-            "astroai_lab.core.arc_permissions.run_capture",
+            "canfar_lab.core.arc_permissions.run_capture",
             return_value="group:team:rwx\nmask::rwx",
         ) as mock_run,
     ):
@@ -70,9 +70,9 @@ def test_read_acl_groups_uses_getfacl(tmp_path: Path) -> None:
 
 def test_list_gms_groups_times_out_the_cli() -> None:
     with (
-        patch("astroai_lab.core.arc_permissions.shutil.which", return_value="cadc-groups"),
-        patch("astroai_lab.core.arc_permissions.cadc_cli_auth_args", return_value=["--cert", "x"]),
-        patch("astroai_lab.core.arc_permissions.run_capture", return_value="team-a\n") as mock_run,
+        patch("canfar_lab.core.arc_permissions.shutil.which", return_value="cadc-groups"),
+        patch("canfar_lab.core.arc_permissions.cadc_cli_auth_args", return_value=["--cert", "x"]),
+        patch("canfar_lab.core.arc_permissions.run_capture", return_value="team-a\n") as mock_run,
     ):
         gms = list_gms_groups()
     assert gms is not None
@@ -83,12 +83,12 @@ def test_list_gms_groups_times_out_the_cli() -> None:
 def test_project_access(tmp_path: Path) -> None:
     proj = tmp_path / "proj"
     proj.mkdir()
-    with patch("astroai_lab.core.arc_permissions.os.access", side_effect=[True, False]):
+    with patch("canfar_lab.core.arc_permissions.os.access", side_effect=[True, False]):
         assert project_access(proj) == "rw"
-    with patch("astroai_lab.core.arc_permissions.os.access", side_effect=[False, True]):
+    with patch("canfar_lab.core.arc_permissions.os.access", side_effect=[False, True]):
         assert project_access(proj) == "ro"
 
 
 def test_list_gms_groups_no_tool() -> None:
-    with patch("astroai_lab.core.arc_permissions.shutil.which", return_value=None):
+    with patch("canfar_lab.core.arc_permissions.shutil.which", return_value=None):
         assert list_gms_groups() is None

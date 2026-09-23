@@ -7,7 +7,7 @@ import threading
 import time
 from pathlib import Path
 
-from astroai_lab.utils.timing import PhaseTimer, call_with_timeout
+from canfar_lab.utils.timing import PhaseTimer, call_with_timeout
 
 
 def test_call_with_timeout_returns_value() -> None:
@@ -30,7 +30,7 @@ def test_call_with_timeout_does_not_block_process_exit() -> None:
     src = Path(__file__).resolve().parents[2] / "src"
     env = {**os.environ, "PYTHONPATH": str(src)}
     code = (
-        "from astroai_lab.utils.timing import call_with_timeout\n"
+        "from canfar_lab.utils.timing import call_with_timeout\n"
         "import time\n"
         "call_with_timeout(lambda: time.sleep(30), 0.15, None)\n"
     )

@@ -134,7 +134,7 @@ npx skills add astroai/canfar-skills    # 23 CANFAR platform skills
 ## Models and providers
 
 `--prepare` seeds credential references for the routes declared in
-[`support.yaml`](https://github.com/astroai/canfar-lab/blob/main/src/astroai_lab/data/agent/support.yaml)
+[`support.yaml`](https://github.com/astroai/canfar-lab/blob/main/src/canfar_lab/data/agent/support.yaml)
 into `$DSH_HOME/settings.yaml`: the DeepSeek route and the catalog routes
 (`openai`, `anthropic`, `google`) as credential references, and any route dsh's
 installed catalog does not ship — currently OpenCode Go — as a hand-declared

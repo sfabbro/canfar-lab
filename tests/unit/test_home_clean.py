@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.home_clean import cache_targets, plan_clean
+from canfar_lab.core.home_clean import cache_targets, plan_clean
 
 
 def test_cache_targets_lists_runtime_cache_dirs(tmp_path: Path) -> None:

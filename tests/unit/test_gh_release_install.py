@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.agent import install as install_mod
-from astroai_lab.errors import LabError
+from canfar_lab.agent import install as install_mod
+from canfar_lab.errors import LabError
 
 
 def test_gh_release_uses_public_curl_when_gh_not_authed(

@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.paths import (
+from canfar_lab.core.paths import (
     find_arc_project_root,
     quota_used_pct,
     scratch_cache_root,
     user_bin_dir,
 )
-from astroai_lab.errors import LabError
+from canfar_lab.errors import LabError
 
 
 def test_scratch_cache_root_with_scratch(tmp_path: Path) -> None:
@@ -48,7 +48,7 @@ def test_user_bin_dir_prefers_scratch_local(
     monkeypatch.setenv("SCRATCH", str(scratch))
     monkeypatch.setenv("WORK", str(tmp_path / "work"))
     (tmp_path / "work").mkdir(exist_ok=True)
-    monkeypatch.delenv("ASTROAI_LAB_BIN_DIR", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_BIN_DIR", raising=False)
     assert user_bin_dir() == scratch / ".local" / "bin"
 
 
@@ -63,9 +63,9 @@ def test_user_bin_dir_falls_back_to_runtime_without_scratch(
     home.mkdir()
     monkeypatch.setenv("WORK", str(work))
     monkeypatch.delenv("SCRATCH", raising=False)
-    monkeypatch.delenv("ASTROAI_LAB_BIN_DIR", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_BIN_DIR", raising=False)
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("ASTROAI_LAB_RUNTIME_ROOT", str(work / ".runtime-test"))
+    monkeypatch.setenv("CANFAR_LAB_RUNTIME_ROOT", str(work / ".runtime-test"))
 
     bin_dir = user_bin_dir()
     assert bin_dir == work / ".runtime-test" / "bin"
@@ -85,8 +85,8 @@ def test_user_bin_dir_runtime_default_without_env(
     monkeypatch.setenv("WORK", str(work))
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.delenv("SCRATCH", raising=False)
-    monkeypatch.delenv("ASTROAI_LAB_BIN_DIR", raising=False)
-    monkeypatch.delenv("ASTROAI_LAB_RUNTIME_ROOT", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_BIN_DIR", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_RUNTIME_ROOT", raising=False)
 
     bin_dir = user_bin_dir()
     assert ".runtime-" in str(bin_dir)

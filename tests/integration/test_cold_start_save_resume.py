@@ -10,10 +10,10 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.cli.main import app
-from astroai_lab.config.settings import get_settings
-from astroai_lab.core.project import list_saves, read_manifest, restore_env, save_env
-from astroai_lab.models.manifest import ProjectKind
+from canfar_lab.cli.main import app
+from canfar_lab.config.settings import get_settings
+from canfar_lab.core.project import list_saves, read_manifest, restore_env, save_env
+from canfar_lab.models.manifest import ProjectKind
 
 runner = CliRunner()
 
@@ -35,7 +35,7 @@ def cold_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("WORK", str(work))
     monkeypatch.setenv("SCRATCH", str(scratch))
-    monkeypatch.setenv("ASTROAI_LAB_ARC_DIR", str(arc))
+    monkeypatch.setenv("CANFAR_LAB_ARC_DIR", str(arc))
     monkeypatch.chdir(work)
     return work
 
@@ -51,10 +51,10 @@ def test_cold_start_init_save_env_resume_loop(cold_env: Path) -> None:
     """init → work → save → new session dir → resume restores project."""
     with pytest.MonkeyPatch.context() as m:
         m.setattr(
-            "astroai_lab.core.project.init_project",
+            "canfar_lab.core.project.init_project",
             lambda target, use_uv=False: ProjectKind.PIXI,
         )
-        m.setattr("astroai_lab.cli.init_clone_env.git_init_and_commit", lambda p: None)
+        m.setattr("canfar_lab.cli.init_clone_env.git_init_and_commit", lambda p: None)
         init = runner.invoke(app, ["init", "mylab", "--no-gh"])
     assert init.exit_code == 0, init.output
 
@@ -76,7 +76,7 @@ def test_cold_start_init_save_env_resume_loop(cold_env: Path) -> None:
     if project.is_dir():
         shutil.rmtree(project)
 
-    with patch("astroai_lab.core.project.install_project"):
+    with patch("canfar_lab.core.project.install_project"):
         resumed = runner.invoke(app, ["resume", "mylab"])
     assert resumed.exit_code == 0, resumed.output
 
@@ -96,7 +96,7 @@ def test_project_save_resume_roundtrip(cold_env: Path) -> None:
 
     empty = cold_env / "fresh"
     empty.mkdir()
-    with patch("astroai_lab.core.project.install_project"):
+    with patch("canfar_lab.core.project.install_project"):
         restore_env(saved, empty)
 
     assert (empty / "pixi.toml").read_text() == (project / "pixi.toml").read_text()
@@ -124,7 +124,7 @@ def test_resume_from_explicit_path(cold_env: Path, tmp_path: Path) -> None:
 
     target = cold_env / "from-external"
     target.mkdir()
-    with patch("astroai_lab.core.project.install_project"):
+    with patch("canfar_lab.core.project.install_project"):
         result = runner.invoke(
             app,
             ["resume", "ext", "--to", str(target), "--from", str(external)],

@@ -72,7 +72,7 @@ sys.modules.setdefault("canfar.models", _canfar_models)
 sys.modules.setdefault("canfar.models.config", _canfar_config)
 sys.modules.setdefault("canfar.sessions", _canfar_sessions)
 
-from astroai_workload.autoscaler import (  # noqa: E402
+from canfar_workload.autoscaler import (  # noqa: E402
     CanfarNodeProvider,
     destroy_autoscaler_workers,
     read_manager_autoscaling_env,
@@ -290,12 +290,12 @@ def test_write_autoscaling_config(tmp_path: pytest.MonkeyPatch) -> None:
     text = path.read_text(encoding="utf-8")
     assert "cluster_name: c1" in text
     assert "max_workers: 8" in text
-    assert "module: astroai_workload.autoscaler.CanfarNodeProvider" in text
+    assert "module: canfar_workload.autoscaler.CanfarNodeProvider" in text
     assert "min_workers: 2" in text
     assert "max_workers: 8" in text
     assert '"cores": 4' in text
     assert '"max_workers": 8' in text
-    assert "astroai_workload.autoscaler.CanfarNodeProvider" in text
+    assert "canfar_workload.autoscaler.CanfarNodeProvider" in text
     # Keys Ray 2.x StandardAutoscaler.reset() hard-requires (KeyError otherwise).
     for required in (
         "head_node_type: ray.head.default",
@@ -346,7 +346,7 @@ def test_provider_merges_nested_config(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = CanfarNodeProvider(
         {
             "type": "external",
-            "module": "astroai_workload.autoscaler.CanfarNodeProvider",
+            "module": "canfar_workload.autoscaler.CanfarNodeProvider",
             "config": {
                 "worker_image": "img/ray-worker:t",
                 "cores": 4,
@@ -373,7 +373,7 @@ def test_import_guard_falls_back_on_missing_ray(monkeypatch: pytest.MonkeyPatch)
     import builtins
     import importlib
 
-    import astroai_workload.autoscaler as autoscaler_mod
+    import canfar_workload.autoscaler as autoscaler_mod
 
     real_import = builtins.__import__
 
@@ -399,7 +399,7 @@ def test_import_guard_propagates_non_importerror(monkeypatch: pytest.MonkeyPatch
     import builtins
     import importlib
 
-    import astroai_workload.autoscaler as autoscaler_mod
+    import canfar_workload.autoscaler as autoscaler_mod
 
     real_import = builtins.__import__
 
@@ -445,7 +445,7 @@ def test_write_manager_autoscaling_env_pythonpath(
     path = write_manager_autoscaling_env(max_workers=3, cores=2, ram_gb=8, idle_timeout_minutes=2)
     text = path.read_text()
     assert "PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
-    assert "ASTROAI_LAB_PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
+    assert "CANFAR_LAB_PYTHONPATH=/arc/projects/hats/zscrape/src/canfar-lab/src" in text
     assert "RAY_AUTOSCALING_IDLE_TIMEOUT_MINUTES=2" in text
 
 

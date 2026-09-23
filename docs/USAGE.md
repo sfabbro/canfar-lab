@@ -171,7 +171,7 @@ astroai run train.py --cpus 2        # discovers the manager; --cpus spins a wor
 astroai cluster status
 ```
 
-Optional: `export ASTROAI_RAY_JOBS_ADDRESS=…` overrides discovery (printed by
+Optional: `export CANFAR_RAY_JOBS_ADDRESS=…` overrides discovery (printed by
 `cluster start`; unnecessary in other sessions when a manager is Running).
 Inside the manager session the default is localhost.
 Size the ceiling with `--min-workers` / `--max-workers` / `--cores` / `--ram`
@@ -249,7 +249,7 @@ runtime DBs also use `$SCRATCH`.
 ```bash
 astroai agent list
 astroai agent install kilo
-# CLIs land on $SCRATCH/.local/bin (override: ASTROAI_LAB_BIN_DIR)
+# CLIs land on $SCRATCH/.local/bin (override: CANFAR_LAB_BIN_DIR)
 astroai agent setup hermes
 astroai agent setup --all
 npx skills add astroai/canfar-skills

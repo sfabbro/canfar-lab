@@ -10,8 +10,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from astroai_workload.cli import app
-from astroai_workload.models import RunStatus
+from canfar_workload.cli import app
+from canfar_workload.models import RunStatus
 
 runner = CliRunner()
 
@@ -49,7 +49,7 @@ class _FakeExecutor:
 
 
 def test_cli_status_and_list(monkeypatch) -> None:
-    monkeypatch.setattr("astroai_workload.cli.RayExecutor", _FakeExecutor)
+    monkeypatch.setattr("canfar_workload.cli.RayExecutor", _FakeExecutor)
     result = runner.invoke(app, ["status", "job-1"])
     assert result.exit_code == 0
     assert result.stdout.strip() == "succeeded"
@@ -60,7 +60,7 @@ def test_cli_status_and_list(monkeypatch) -> None:
 
 
 def test_cli_submit_cmd(monkeypatch) -> None:
-    monkeypatch.setattr("astroai_workload.cli.RayExecutor", _FakeExecutor)
+    monkeypatch.setattr("canfar_workload.cli.RayExecutor", _FakeExecutor)
     result = runner.invoke(app, ["submit", "--cmd", "python -c 'print(1)'", "--run-id", "x1"])
     assert result.exit_code == 0
     assert result.stdout.strip() == "x1"
@@ -80,7 +80,7 @@ def test_cli_run_script(monkeypatch, tmp_path: Path) -> None:
         assert kwargs["expected_outputs"] == ["/arc/projects/g/out"]
         return RunStatus.SUCCEEDED, "ok\n"
 
-    monkeypatch.setattr("astroai_workload.cli.run_script", _fake_run_script)
+    monkeypatch.setattr("canfar_workload.cli.run_script", _fake_run_script)
     result = runner.invoke(
         app,
         [
@@ -113,7 +113,7 @@ def test_cli_submit_stores_input_uris(monkeypatch) -> None:
             seen["outputs"] = [p.uri for p in spec.expected_outputs]
             return spec.run_id
 
-    monkeypatch.setattr("astroai_workload.cli.RayExecutor", _Capture)
+    monkeypatch.setattr("canfar_workload.cli.RayExecutor", _Capture)
     result = runner.invoke(
         app,
         [
@@ -139,7 +139,7 @@ def test_cli_help_names_cluster_and_run() -> None:
     assert result.exit_code == 0
     out = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     assert "cluster start" in out
-    assert "astroai run" in out
+    assert "canfar run" in out
 
 
 def test_cli_help_has_no_legacy_commands() -> None:
@@ -174,7 +174,7 @@ def test_cluster_start_forwards_autoscaling_options(monkeypatch, tmp_path) -> No
             "autoscaling": True,
         }
 
-    monkeypatch.setattr("astroai_workload.cli.cluster_start_payload", _fake_payload)
+    monkeypatch.setattr("canfar_workload.cli.cluster_start_payload", _fake_payload)
     result = runner.invoke(
         app,
         ["cluster", "start", "--json", "--min-workers", "1", "--max-workers", "4"],
@@ -182,7 +182,7 @@ def test_cluster_start_forwards_autoscaling_options(monkeypatch, tmp_path) -> No
     assert result.exit_code == 0, result.output
     payload = json.loads(result.stdout)
     assert payload["autoscaling"] is True
-    assert "export ASTROAI_RAY_JOBS_ADDRESS" not in result.output
+    assert "export CANFAR_RAY_JOBS_ADDRESS" not in result.output
     assert captured["min_workers"] == 1
     assert captured["max_workers"] == 4
 
@@ -197,7 +197,7 @@ def test_cli_run_missing_script_is_not_invalid_value(tmp_path: Path) -> None:
 
 
 def test_cli_submit_wait_prints_status(monkeypatch) -> None:
-    monkeypatch.setattr("astroai_workload.cli.RayExecutor", _FakeExecutor)
+    monkeypatch.setattr("canfar_workload.cli.RayExecutor", _FakeExecutor)
     result = runner.invoke(app, ["submit", "--cmd", "python train.py", "--run-id", "w1", "--wait"])
     assert result.exit_code == 0
     assert "w1" in result.stdout
@@ -206,7 +206,7 @@ def test_cli_submit_wait_prints_status(monkeypatch) -> None:
 
 
 def test_cli_logs_cancel_wait(monkeypatch) -> None:
-    monkeypatch.setattr("astroai_workload.cli.RayExecutor", _FakeExecutor)
+    monkeypatch.setattr("canfar_workload.cli.RayExecutor", _FakeExecutor)
     logs = runner.invoke(app, ["logs", "job-1"])
     assert logs.exit_code == 0
     assert logs.stdout == "logs:job-1\n"

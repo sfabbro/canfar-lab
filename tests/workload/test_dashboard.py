@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from astroai_workload.dashboard import (
+from canfar_workload.dashboard import (
     DashboardProxy,
     dashboard_iframe_html,
     jobs_url_from_connect,
@@ -75,22 +75,22 @@ def test_persist_and_read_connect_url(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 def test_resolve_dashboard_url_uses_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
-    monkeypatch.setenv("ASTROAI_RAY_JOBS_ADDRESS", "http://127.0.0.1:8265")
+    monkeypatch.setenv("CANFAR_RAY_JOBS_ADDRESS", "http://127.0.0.1:8265")
     assert resolve_dashboard_url() == "http://127.0.0.1:8265"
 
 
 def test_resolve_dashboard_url_from_persisted(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect", lambda: (None, False, None)
+        "canfar_workload.dashboard._live_manager_connect", lambda: (None, False, None)
     )
-    monkeypatch.setattr("astroai_workload.dashboard._probe_manager_url", lambda _url: True)
+    monkeypatch.setattr("canfar_workload.dashboard._probe_manager_url", lambda _url: True)
     persist_connect_url("c9", "https://canfar.net/session/contrib/xyz")
     assert resolve_dashboard_url() == "https://canfar.net/session/contrib/xyz/dashboard"
 
@@ -98,13 +98,13 @@ def test_resolve_dashboard_url_from_persisted(
 def test_resolve_dashboard_url_clears_dead_persist(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect", lambda: (None, False, None)
+        "canfar_workload.dashboard._live_manager_connect", lambda: (None, False, None)
     )
-    monkeypatch.setattr("astroai_workload.dashboard._probe_manager_url", lambda _url: False)
+    monkeypatch.setattr("canfar_workload.dashboard._probe_manager_url", lambda _url: False)
     persist_connect_url("c9", "https://canfar.net/session/contrib/dead")
     assert resolve_dashboard_url() is None
     assert read_persisted_connect_url() is None
@@ -113,19 +113,19 @@ def test_resolve_dashboard_url_clears_dead_persist(
 def test_resolve_dashboard_url_live_beats_persist(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
     persist_connect_url("old", "https://canfar.net/session/contrib/dead")
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect",
+        "canfar_workload.dashboard._live_manager_connect",
         lambda: ("https://canfar.net/session/contrib/live", True, "live"),
     )
     assert resolve_dashboard_url() == "https://canfar.net/session/contrib/live/dashboard"
 
 
 def test_live_manager_connect_persists_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_workload.dashboard import _live_manager_connect
+    from canfar_workload.dashboard import _live_manager_connect
 
     monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -141,7 +141,7 @@ def test_live_manager_connect_persists_url(tmp_path: Path, monkeypatch: pytest.M
             }
 
     monkeypatch.setattr(
-        "astroai_workload.canfar_ops.CanfarOps",
+        "canfar_workload.canfar_ops.CanfarOps",
         lambda: _Ops(),
     )
     url, visible, manager_id = _live_manager_connect()
@@ -154,12 +154,12 @@ def test_live_manager_connect_persists_url(tmp_path: Path, monkeypatch: pytest.M
 def test_resolve_dashboard_url_pending_manager_not_stale_persist(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv("ASTROAI_RAY_JOBS_ADDRESS", raising=False)
+    monkeypatch.delenv("CANFAR_RAY_JOBS_ADDRESS", raising=False)
     monkeypatch.delenv("RAY_DASHBOARD_URL", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
     persist_connect_url("old", "https://canfar.net/session/contrib/dead")
     monkeypatch.setattr(
-        "astroai_workload.dashboard._live_manager_connect", lambda: (None, True, "new")
+        "canfar_workload.dashboard._live_manager_connect", lambda: (None, True, "new")
     )
     assert resolve_dashboard_url() is None
 

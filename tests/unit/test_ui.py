@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from astroai_lab import ui
+from canfar_lab import ui
 
 
 def _combined(capsys) -> str:
@@ -21,7 +21,7 @@ def test_env_list_table_with_rows(capsys) -> None:
 
 
 def test_status_human(capsys) -> None:
-    from astroai_lab.core.storage import ArcProjectInfo, QuotaLine
+    from canfar_lab.core.storage import ArcProjectInfo, QuotaLine
 
     quotas = [
         QuotaLine(
@@ -68,7 +68,7 @@ def test_status_human(capsys) -> None:
     assert "free" in combined.lower()
     assert "Team projects" not in combined
     assert "othergroup" not in combined
-    assert "astroai clean" in combined
+    assert "canfar lab clean" in combined
 
     ui.status_human(
         quotas, [(".cache", "1M", "caches")], active, [active, other], ["proc1"], full=True

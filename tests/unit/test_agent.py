@@ -5,15 +5,15 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.inventory import list_bundles, verify_setup
-from astroai_lab.agent.setup import agent_setup, install_file
-from astroai_lab.cli.main import app
+from canfar_lab.agent.inventory import list_bundles, verify_setup
+from canfar_lab.agent.setup import agent_setup, install_file
+from canfar_lab.cli.main import app
 
 runner = CliRunner()
 
 
 def test_bundle_root_exists() -> None:
-    from astroai_lab.agent.bundle_path import bundle_root
+    from canfar_lab.agent.bundle_path import bundle_root
 
     assert (bundle_root() / "manifest.json").is_file()
 
@@ -47,7 +47,7 @@ def test_agent_verify_fresh_home_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         lambda *a, **k: {
             "binary": "x",
             "path": None,
@@ -98,7 +98,7 @@ def test_agent_verify_goose_scaffold_without_provider_ok(
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _classify)
     issues = verify_setup(home)
     assert not any("Goose provider" in i for i in issues)
 
@@ -130,7 +130,7 @@ def test_agent_verify_cursor_required_when_installed(
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _classify)
     issues = verify_setup(home)
     assert any("Cursor MCP not configured" in i for i in issues)
 
@@ -165,15 +165,15 @@ def test_agent_verify_reports_home_owned_cli(
             "legacy_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _classify)
     issues = verify_setup(home)
     assert any("/arc" in i or "$HOME" in i for i in issues)
     assert any("cursor" in i for i in issues)
 
 
 def test_classify_binary_scratch_canonical(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent import install as install_mod
-    from astroai_lab.errors import LabError
+    from canfar_lab.agent import install as install_mod
+    from canfar_lab.errors import LabError
 
     home = tmp_path / "home"
     home_bin = home / ".local" / "bin"
@@ -192,8 +192,8 @@ def test_classify_binary_scratch_canonical(tmp_path: Path, monkeypatch: pytest.M
             "E",
             (),
             {
-                "astroai_lab_bin_dir": scratch_bin,
-                "astroai_lab_npm_prefix": scratch_bin.parent,
+                "canfar_lab_bin_dir": scratch_bin,
+                "canfar_lab_npm_prefix": scratch_bin.parent,
             },
         )(),
     )
@@ -218,7 +218,7 @@ def test_classify_binary_scratch_canonical(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_agent_verify_opencode_syntax(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent.inventory import verify_config_syntax
+    from canfar_lab.agent.inventory import verify_config_syntax
 
     home = tmp_path / "home"
     oc = home / ".config" / "opencode"
@@ -230,7 +230,7 @@ def test_agent_verify_opencode_syntax(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 def test_agent_verify_jsonc_ok(tmp_path: Path) -> None:
-    from astroai_lab.agent.inventory import verify_config_syntax
+    from canfar_lab.agent.inventory import verify_config_syntax
 
     home = tmp_path / "home"
     oc = home / ".config" / "opencode"
@@ -280,24 +280,24 @@ def test_agent_setup_cli_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
 
 def test_install_tool_unknown() -> None:
-    from astroai_lab.agent.install import install_tool
-    from astroai_lab.errors import LabError
+    from canfar_lab.agent.install import install_tool
+    from canfar_lab.errors import LabError
 
     with pytest.raises(LabError, match="Unknown tool"):
         install_tool("not-a-tool")
 
 
 def test_install_tool_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent.install import install_tool
+    from canfar_lab.agent.install import install_tool
 
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("astroai_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
     install_tool("node", dry_run=True)
 
 
 def test_merge_mcp_servers(tmp_path: Path) -> None:
-    from astroai_lab.agent.setup import merge_mcp_servers
-    from astroai_lab.utils.json_utils import read_json, write_json
+    from canfar_lab.agent.setup import merge_mcp_servers
+    from canfar_lab.utils.json_utils import read_json, write_json
 
     src = tmp_path / "src.json"
     dst = tmp_path / "dst.json"
@@ -313,7 +313,7 @@ def test_merge_mcp_servers(tmp_path: Path) -> None:
 def test_npm_global_install_cmd_adds_allow_scripts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     monkeypatch.setattr(install_mod, "_npm_version_tuple", lambda: (11, 17))
     cmd = install_mod.npm_global_install_cmd(
@@ -327,7 +327,7 @@ def test_npm_global_install_cmd_adds_allow_scripts(
 def test_npm_global_install_cmd_skips_flag_on_old_npm(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     monkeypatch.setattr(install_mod, "_npm_version_tuple", lambda: (10, 9))
     cmd = install_mod.npm_global_install_cmd(tmp_path / "prefix", "left-pad@1.3.0")
@@ -337,7 +337,7 @@ def test_npm_global_install_cmd_skips_flag_on_old_npm(
 def test_npm_install_environ_silences_update_notifier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     monkeypatch.setattr(
         install_mod,
@@ -350,7 +350,7 @@ def test_npm_install_environ_silences_update_notifier(
 
 
 def test_cursor_tool_and_binary() -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     assert install_mod.tool_binary("cursor") == "agent"
     assert "cursor" in install_mod.TOOLS
@@ -373,7 +373,7 @@ def test_curl_installer_environ_sandboxes_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Curl installers get a scratch HOME so drops never hit /arc NFS."""
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     home = tmp_path / "home"
     bin_dir = tmp_path / "scratch" / ".local" / "bin"
@@ -394,7 +394,7 @@ def test_curl_installer_environ_sandboxes_home(
 
 
 def test_find_curl_binary_prefers_sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     home = tmp_path / "home"
     bin_dir = tmp_path / "scratch" / ".local" / "bin"
@@ -413,7 +413,7 @@ def test_find_curl_binary_prefers_sandbox(tmp_path: Path, monkeypatch: pytest.Mo
 def test_link_copies_kilo_tree_sitter_sibling(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     scratch_bin = tmp_path / "scratch" / "bin"
     src_dir = tmp_path / "scratch" / "installer-home" / ".kilo" / "bin"
@@ -437,7 +437,7 @@ def test_link_keeps_cursor_payload_next_to_wrapper(
 
     Copying only the wrapper into bin/ makes it exec `$BIN_DIR/node`.
     """
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     scratch_bin = tmp_path / "scratch" / "bin"
     payload = (
@@ -487,7 +487,7 @@ def test_remove_home_cli_requires_clean_home_flag(
 ) -> None:
     from types import SimpleNamespace
 
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     home = tmp_path / "home"
     home_bin = home / ".local" / "bin"
@@ -500,8 +500,8 @@ def test_remove_home_cli_requires_clean_home_flag(
     monkeypatch.setattr(install_mod, "_npm_prefix", lambda: scratch_bin.parent)
     monkeypatch.setattr(install_mod.shutil, "which", lambda _: None)
     session = SimpleNamespace(
-        astroai_lab_bin_dir=scratch_bin,
-        astroai_lab_npm_prefix=scratch_bin.parent,
+        canfar_lab_bin_dir=scratch_bin,
+        canfar_lab_npm_prefix=scratch_bin.parent,
     )
     session.exports = dict
     monkeypatch.setattr(install_mod, "resolve_session_env", lambda ensure=False: session)
@@ -521,8 +521,8 @@ def test_refuse_clears_symlink_landing_without_following(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Planted ~/.local/bin symlink must be unlinked, not written through."""
-    from astroai_lab.agent import install as install_mod
-    from astroai_lab.errors import LabError
+    from canfar_lab.agent import install as install_mod
+    from canfar_lab.errors import LabError
 
     home = tmp_path / "home"
     home_bin = home / ".local" / "bin"
@@ -552,7 +552,7 @@ def test_refuse_clears_symlink_landing_without_following(
 def test_link_into_local_bin_unlinks_symlink_dst(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     home = tmp_path / "home"
     home_bin = home / ".local" / "bin"

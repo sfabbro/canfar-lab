@@ -1,7 +1,7 @@
 [project]
-name = "astroai-lab"
-version = "0.5.0"
-description = "In-session workbench CLI for AstroAI sessions on the CANFAR Science Platform"
+name = "canfar-lab"
+version = "0.6.0"
+description = "In-session workbench and workload CLI extensions for the CANFAR Science Platform"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -49,27 +49,35 @@ Issues = "https://github.com/astroai/canfar-lab/issues"
 Platform = "https://opencadc.github.io/canfar/"
 
 [project.scripts]
-astroai = "astroai_lab.cli.main:main_entry"
+canfar-lab = "canfar_lab.cli.main:main_entry"
+
+[project.entry-points."canfar.commands"]
+lab = "canfar_lab.cli.main:lab_app"
+sync = "canfar_lab.cli.sync:sync_app"
+cluster = "canfar_workload.cli:cluster_app"
+run = "canfar_workload.cli:cmd_run"
+jobs = "canfar_workload.cli:jobs_app"
+agent = "canfar_lab.cli.agent_cmd:agent_app"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/astroai_lab", "src/astroai_workload"]
+packages = ["src/canfar_lab", "src/canfar_workload"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "--cov=astroai_lab --cov=astroai_workload --cov-report=term-missing --cov-fail-under=73"
+addopts = "--cov=canfar_lab --cov=canfar_workload --cov-report=term-missing --cov-fail-under=73"
 
 [tool.coverage.run]
-source = ["src/astroai_lab", "src/astroai_workload"]
+source = ["src/canfar_lab", "src/canfar_workload"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-extend-exclude = ["*.ipynb", "src/astroai_lab/data/notebooks/starter.py"]
+extend-exclude = ["*.ipynb", "src/canfar_lab/data/notebooks/starter.py", "templates", "skills", "rules", "instructions", "agents"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "BLE", "SIM", "PIE"]
@@ -93,13 +101,13 @@ ty = ">=0.0.65"
 tomli = ">=2.0"
 
 [tool.pixi.pypi-dependencies]
-astroai-lab = { path = ".", editable = true }
+canfar-lab = { path = ".", editable = true }
 canfar = ">=1.4.1"
 
 [tool.pixi.tasks]
 lint = "ruff check ."
 format-check = "ruff format --check ."
-typecheck = "ty check --python .pixi/envs/default/bin/python src/astroai_lab"
+typecheck = "ty check --python .pixi/envs/default/bin/python src/canfar_lab"
 cli-audit = "bash scripts/audit-cli-help.sh"
 test = "pytest -q"
 ci = "pixi run lint && pixi run format-check && pixi run typecheck && pixi run cli-audit && pixi run test"

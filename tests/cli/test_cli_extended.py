@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.cli.main import app
-from astroai_lab.config.settings import get_settings
+from canfar_lab.cli.main import app
+from canfar_lab.config.settings import get_settings
 
 runner = CliRunner()
 
@@ -40,14 +40,14 @@ def _pixi(path: Path) -> None:
 
 
 def test_clone_requires_gh(lab_env: Path) -> None:
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value=None):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value=None):
         result = runner.invoke(app, ["clone", "org/repo"])
     assert result.exit_code == 1
     assert "gh" in result.output.lower()
 
 
 def test_clone_from_without_env(lab_env: Path) -> None:
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
         result = runner.invoke(app, ["clone", "--from", "/tmp/save", "org/repo"])
     assert result.exit_code == 1
 
@@ -56,7 +56,7 @@ def test_clone_update_dry_run(lab_env: Path) -> None:
     dest = lab_env / "repo"
     dest.mkdir(parents=True)
     (dest / ".git").mkdir()
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
         result = runner.invoke(
             app,
             ["--dry-run", "clone", "org/repo", "--update", "--to", str(dest)],
@@ -69,8 +69,8 @@ def test_clone_exists_hints_update(lab_env: Path) -> None:
     dest = lab_env / "repo"
     dest.mkdir(parents=True)
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
-        patch("astroai_lab.cli.init_clone_env.resolve_clone_spec", return_value="org/repo"),
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.cli.init_clone_env.resolve_clone_spec", return_value="org/repo"),
     ):
         result = runner.invoke(app, ["clone", "org/repo"])
     assert result.exit_code == 1
@@ -78,7 +78,7 @@ def test_clone_exists_hints_update(lab_env: Path) -> None:
 
 
 def test_clone_force_requires_update(lab_env: Path) -> None:
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
         result = runner.invoke(app, ["clone", "org/repo", "--force"])
     assert result.exit_code == 1
     assert "--force requires --update" in result.output
@@ -86,10 +86,10 @@ def test_clone_force_requires_update(lab_env: Path) -> None:
 
 def test_clone_success(lab_env: Path) -> None:
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
-        patch("astroai_lab.utils.subprocess.run") as mock_run,
-        patch("astroai_lab.core.project.detect_project", return_value=None),
-        patch("astroai_lab.cli.init_clone_env._finalize_clone", return_value="abc1234"),
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.utils.subprocess.run") as mock_run,
+        patch("canfar_lab.core.project.detect_project", return_value=None),
+        patch("canfar_lab.cli.init_clone_env._finalize_clone", return_value="abc1234"),
     ):
         result = runner.invoke(app, ["clone", "org/repo"])
     assert result.exit_code == 0, result.output
@@ -104,9 +104,9 @@ def test_clone_two_short_names_are_both_repos(lab_env: Path) -> None:
         return f"user/{spec}"
 
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
-        patch("astroai_lab.cli.init_clone_env.resolve_clone_spec", side_effect=fake_spec),
-        patch("astroai_lab.utils.subprocess.run") as mock_run,
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.cli.init_clone_env.resolve_clone_spec", side_effect=fake_spec),
+        patch("canfar_lab.utils.subprocess.run") as mock_run,
     ):
         result = runner.invoke(app, ["--dry-run", "clone", "weightmask", "cfhtcast"])
     assert result.exit_code == 0, result.output
@@ -118,8 +118,8 @@ def test_clone_two_short_names_are_both_repos(lab_env: Path) -> None:
 
 def test_clone_multiple_dry_run(lab_env: Path) -> None:
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
-        patch("astroai_lab.utils.subprocess.run") as mock_run,
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.utils.subprocess.run") as mock_run,
     ):
         result = runner.invoke(app, ["--dry-run", "clone", "org/alpha", "org/beta"])
     assert result.exit_code == 0, result.output
@@ -129,7 +129,7 @@ def test_clone_multiple_dry_run(lab_env: Path) -> None:
 
 
 def test_clone_to_rejects_multiple_repos(lab_env: Path) -> None:
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
         result = runner.invoke(app, ["clone", "org/a", "org/b", "--to", "/tmp/x"])
     assert result.exit_code == 1
     assert "--to" in result.output
@@ -137,7 +137,7 @@ def test_clone_to_rejects_multiple_repos(lab_env: Path) -> None:
 
 def test_clone_dir_dry_run(lab_env: Path, tmp_path: Path) -> None:
     parent = tmp_path / "home" / "src"
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
         result = runner.invoke(
             app, ["--dry-run", "clone", "org/alpha", "org/beta", "--dir", str(parent)]
         )
@@ -150,7 +150,7 @@ def test_clone_dir_dry_run(lab_env: Path, tmp_path: Path) -> None:
 
 
 def test_clone_dir_rejects_to(lab_env: Path, tmp_path: Path) -> None:
-    with patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
+    with patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"):
         result = runner.invoke(
             app,
             ["clone", "org/repo", "--dir", str(tmp_path / "src"), "--to", str(tmp_path / "x")],
@@ -160,12 +160,12 @@ def test_clone_dir_rejects_to(lab_env: Path, tmp_path: Path) -> None:
 
 
 def test_init_dir(lab_env: Path, tmp_path: Path) -> None:
-    from astroai_lab.models.manifest import ProjectKind
+    from canfar_lab.models.manifest import ProjectKind
 
     parent = tmp_path / "home" / "src"
     with (
-        patch("astroai_lab.core.project.init_project", return_value=ProjectKind.PIXI) as init,
-        patch("astroai_lab.cli.init_clone_env.git_init_and_commit"),
+        patch("canfar_lab.core.project.init_project", return_value=ProjectKind.PIXI) as init,
+        patch("canfar_lab.cli.init_clone_env.git_init_and_commit"),
     ):
         result = runner.invoke(app, ["init", "newlab", "--no-gh", "--dir", str(parent)])
     assert result.exit_code == 0, result.output
@@ -194,15 +194,15 @@ def test_clone_with_from_env(
     (save_dir / "manifest.json").write_text(json.dumps(manifest))
     (save_dir / "pixi.lock").write_text("lock")
 
-    from astroai_lab.models.manifest import ProjectKind
+    from canfar_lab.models.manifest import ProjectKind
 
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
-        patch("astroai_lab.utils.subprocess.run"),
-        patch("astroai_lab.core.project.warm_cache"),
-        patch("astroai_lab.core.project.detect_project", return_value=ProjectKind.PIXI),
-        patch("astroai_lab.core.project.bootstrap_lock", return_value=True),
-        patch("astroai_lab.core.project.install_project"),
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.utils.subprocess.run"),
+        patch("canfar_lab.core.project.warm_cache"),
+        patch("canfar_lab.core.project.detect_project", return_value=ProjectKind.PIXI),
+        patch("canfar_lab.core.project.bootstrap_lock", return_value=True),
+        patch("canfar_lab.core.project.install_project"),
     ):
         result = runner.invoke(app, ["clone", "--from-env", "ml-base", "org/repo"])
     assert result.exit_code == 0, result.output
@@ -217,11 +217,11 @@ def test_init_existing_dir(lab_env: Path) -> None:
 
 
 def test_init_success(lab_env: Path) -> None:
-    from astroai_lab.models.manifest import ProjectKind
+    from canfar_lab.models.manifest import ProjectKind
 
     with (
-        patch("astroai_lab.core.project.init_project", return_value=ProjectKind.PIXI),
-        patch("astroai_lab.cli.init_clone_env.git_init_and_commit"),
+        patch("canfar_lab.core.project.init_project", return_value=ProjectKind.PIXI),
+        patch("canfar_lab.cli.init_clone_env.git_init_and_commit"),
     ):
         result = runner.invoke(app, ["init", "newlab", "--no-gh"])
     assert result.exit_code == 0
@@ -241,7 +241,7 @@ def test_resume_success(lab_env: Path, tmp_path: Path) -> None:
     }
     (save_dir / "manifest.json").write_text(json.dumps(manifest))
 
-    with patch("astroai_lab.core.project.restore_env"):
+    with patch("canfar_lab.core.project.restore_env"):
         result = runner.invoke(app, ["resume", "mylab", "--from", str(save_dir)])
     assert result.exit_code == 0
 
@@ -308,7 +308,7 @@ def test_resume_flat(lab_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     }
     (saves / "manifest.json").write_text(json.dumps(manifest))
     get_settings.cache_clear()
-    with patch("astroai_lab.core.project.restore_env"):
+    with patch("canfar_lab.core.project.restore_env"):
         result = runner.invoke(app, ["resume", "mylab"])
     assert result.exit_code == 0
 
@@ -322,15 +322,15 @@ def test_kernel_register_cli(lab_env: Path, monkeypatch: pytest.MonkeyPatch) -> 
     (py / "python").write_text("#!/bin/sh")
     monkeypatch.chdir(project)
     with (
-        patch("astroai_lab.core.kernel.shutil.which", return_value="/usr/bin/jupyter"),
-        patch("astroai_lab.core.kernel.run"),
+        patch("canfar_lab.core.kernel.shutil.which", return_value="/usr/bin/jupyter"),
+        patch("canfar_lab.core.kernel.run"),
     ):
         result = runner.invoke(app, ["kernel", "register"])
     assert result.exit_code == 0
 
 
 def test_kernel_list_json(lab_env: Path) -> None:
-    with patch("astroai_lab.cli.kernel.list_kernels", return_value=[{"name": "k", "path": "/p"}]):
+    with patch("canfar_lab.cli.kernel.list_kernels", return_value=[{"name": "k", "path": "/p"}]):
         for argv in (["--json", "kernel", "list"], ["kernel", "list", "--json"]):
             result = runner.invoke(app, argv)
             assert result.exit_code == 0, result.output
@@ -385,7 +385,7 @@ def test_resume_name_yes_accepted(lab_env: Path) -> None:
     dest = lab_env / "mylab"
     dest.mkdir()
     (dest / "stale.txt").write_text("x")
-    with patch("astroai_lab.core.project.restore_env"):
+    with patch("canfar_lab.core.project.restore_env"):
         result = runner.invoke(app, ["resume", "mylab", "--yes"])
     assert result.exit_code == 0, result.output
     assert not dest.exists()  # --yes rmtree before restore; mock does not recreate
@@ -411,7 +411,7 @@ def test_resume_yes_trailing_flag(lab_env: Path, tmp_path: Path) -> None:
     dest.mkdir()
     leftover = dest / "stale.txt"
     leftover.write_text("keep-me-not")
-    with patch("astroai_lab.core.project.install_project"):
+    with patch("canfar_lab.core.project.install_project"):
         result = runner.invoke(app, ["resume", "mylab", "--from", str(save_dir), "--yes"])
     assert result.exit_code == 0, result.output
     assert not leftover.exists()
@@ -449,7 +449,7 @@ def test_resume_yes_replaces_not_merges(lab_env: Path, tmp_path: Path) -> None:
     dest.mkdir()
     (dest / "old-pixi.toml").write_text("stale-kind")
     (dest / "keep-me-not").write_text("x")
-    with patch("astroai_lab.core.project.install_project"):
+    with patch("canfar_lab.core.project.install_project"):
         result = runner.invoke(app, ["resume", "mylab", "--from", str(save_dir), "--yes"])
     assert result.exit_code == 0, result.output
     assert not (dest / "old-pixi.toml").exists()
@@ -495,8 +495,8 @@ def test_resume_dry_run_does_not_rmtree(lab_env: Path, tmp_path: Path) -> None:
 
 def test_clone_dry_run_writes_nothing(lab_env: Path) -> None:
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
-        patch("astroai_lab.utils.subprocess.run") as mock_run,
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.utils.subprocess.run") as mock_run,
     ):
         result = runner.invoke(app, ["--dry-run", "clone", "org/repo"])
     assert result.exit_code == 0, result.output
@@ -505,18 +505,18 @@ def test_clone_dry_run_writes_nothing(lab_env: Path) -> None:
 
 
 def test_resolve_clone_spec_passthrough() -> None:
-    from astroai_lab.cli.init_clone_env import resolve_clone_spec
+    from canfar_lab.cli.init_clone_env import resolve_clone_spec
 
     assert resolve_clone_spec("owner/repo") == "owner/repo"
 
 
 def test_resolve_clone_spec_user_first() -> None:
-    from astroai_lab.cli.init_clone_env import resolve_clone_spec
+    from canfar_lab.cli.init_clone_env import resolve_clone_spec
 
     with (
-        patch("astroai_lab.cli.init_clone_env._gh_login", return_value="sfabbro"),
+        patch("canfar_lab.cli.init_clone_env._gh_login", return_value="sfabbro"),
         patch(
-            "astroai_lab.cli.init_clone_env._gh_repo_exists",
+            "canfar_lab.cli.init_clone_env._gh_repo_exists",
             side_effect=lambda spec: spec == "sfabbro/foo",
         ),
     ):
@@ -524,12 +524,12 @@ def test_resolve_clone_spec_user_first() -> None:
 
 
 def test_resolve_clone_spec_astroai_fallback() -> None:
-    from astroai_lab.cli.init_clone_env import resolve_clone_spec
+    from canfar_lab.cli.init_clone_env import resolve_clone_spec
 
     with (
-        patch("astroai_lab.cli.init_clone_env._gh_login", return_value="sfabbro"),
+        patch("canfar_lab.cli.init_clone_env._gh_login", return_value="sfabbro"),
         patch(
-            "astroai_lab.cli.init_clone_env._gh_repo_exists",
+            "canfar_lab.cli.init_clone_env._gh_repo_exists",
             side_effect=lambda spec: spec == "astroai/foo",
         ),
     ):
@@ -537,12 +537,12 @@ def test_resolve_clone_spec_astroai_fallback() -> None:
 
 
 def test_resolve_clone_spec_no_login_uses_astroai() -> None:
-    from astroai_lab.cli.init_clone_env import resolve_clone_spec
+    from canfar_lab.cli.init_clone_env import resolve_clone_spec
 
     with (
-        patch("astroai_lab.cli.init_clone_env._gh_login", return_value=None),
+        patch("canfar_lab.cli.init_clone_env._gh_login", return_value=None),
         patch(
-            "astroai_lab.cli.init_clone_env._gh_repo_exists",
+            "canfar_lab.cli.init_clone_env._gh_repo_exists",
             side_effect=lambda spec: spec == "astroai/foo",
         ),
     ):
@@ -550,12 +550,12 @@ def test_resolve_clone_spec_no_login_uses_astroai() -> None:
 
 
 def test_resolve_clone_spec_missing() -> None:
-    from astroai_lab.cli.init_clone_env import resolve_clone_spec
-    from astroai_lab.errors import LabError
+    from canfar_lab.cli.init_clone_env import resolve_clone_spec
+    from canfar_lab.errors import LabError
 
     with (
-        patch("astroai_lab.cli.init_clone_env._gh_login", return_value="sfabbro"),
-        patch("astroai_lab.cli.init_clone_env._gh_repo_exists", return_value=False),
+        patch("canfar_lab.cli.init_clone_env._gh_login", return_value="sfabbro"),
+        patch("canfar_lab.cli.init_clone_env._gh_repo_exists", return_value=False),
         pytest.raises(LabError, match="sfabbro/foo"),
     ):
         resolve_clone_spec("foo")
@@ -563,12 +563,12 @@ def test_resolve_clone_spec_missing() -> None:
 
 def test_clone_short_name_dry_run(lab_env: Path) -> None:
     with (
-        patch("astroai_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
+        patch("canfar_lab.cli.init_clone_env.shutil.which", return_value="/usr/bin/gh"),
         patch(
-            "astroai_lab.cli.init_clone_env.resolve_clone_spec",
+            "canfar_lab.cli.init_clone_env.resolve_clone_spec",
             return_value="sfabbro/foo",
         ),
-        patch("astroai_lab.utils.subprocess.run") as mock_run,
+        patch("canfar_lab.utils.subprocess.run") as mock_run,
     ):
         result = runner.invoke(app, ["--dry-run", "clone", "foo"])
     assert result.exit_code == 0, result.output
@@ -580,7 +580,7 @@ def test_banner_with_project(lab_env: Path, monkeypatch: pytest.MonkeyPatch) -> 
     project = lab_env / "active"
     _pixi(project)
     monkeypatch.chdir(project)
-    with patch("astroai_lab.cli.banner.git_status") as gs:
+    with patch("canfar_lab.cli.banner.git_status") as gs:
         gs.return_value = type("S", (), {"in_repo": True, "uncommitted": True})()
         result = runner.invoke(app, [])
     assert result.exit_code == 0

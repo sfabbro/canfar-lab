@@ -1,0 +1,158 @@
+version = 1
+workspace_root = "."
+agent_home = "sfabbro/agent-home"
+worktrees_root = "worktrees"
+archive_root = "archive"
+
+[repositories."astroai/canfar-containers"]
+path = "astroai/canfar-containers"
+class = "platform"
+lifecycle = "active"
+workflow = "generic"
+remote_policy = "astroai_fork"
+harness_config = "astroai/canfar-containers/.cursor/harness/config.json"
+
+[repositories."astroai/canfar-lab"]
+path = "astroai/canfar-lab"
+class = "platform"
+lifecycle = "on_demand"
+workflow = "canfar"
+remote_policy = "astroai_fork"
+
+[repositories."astroai/canfar-skills"]
+path = "astroai/canfar-skills"
+class = "platform"
+lifecycle = "on_demand"
+workflow = "generic"
+remote_policy = "astroai_fork"
+
+[repositories."astroai/cfhtcast"]
+path = "astroai/cfhtcast"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/cfhtcast/.cursor/harness/config.json"
+
+[repositories."astroai/cosmodist"]
+path = "astroai/cosmodist"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/cosmodist/.cursor/harness/config.json"
+
+[repositories."astroai/torchfits"]
+path = "astroai/torchfits"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/torchfits/.cursor/harness/config.json"
+
+[repositories."astroai/torchregress"]
+path = "astroai/torchregress"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/torchregress/.cursor/harness/config.json"
+
+[repositories."astroai/torchregress-harness"]
+path = "astroai/torchregress-harness"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/torchregress-harness/.cursor/harness/config.json"
+
+[repositories."astroai/torchsky"]
+path = "astroai/torchsky"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/torchsky/.cursor/harness/config.json"
+
+[repositories."astroai/torchz"]
+path = "astroai/torchz"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/torchz/.cursor/harness/config.json"
+
+[repositories."astroai/uspm"]
+path = "astroai/uspm"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/uspm/.cursor/harness/config.json"
+
+[repositories."astroai/weightmask"]
+path = "astroai/weightmask"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/weightmask/.cursor/harness/config.json"
+
+[repositories."astroai/xmatch"]
+path = "astroai/xmatch"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/xmatch/.cursor/harness/config.json"
+
+[repositories."astroai/zensus"]
+path = "astroai/zensus"
+class = "owned_product"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "astroai_fork"
+harness_config = "astroai/zensus/.cursor/harness/config.json"
+
+[repositories."sfabbro/agent-home"]
+path = "sfabbro/agent-home"
+class = "personal"
+lifecycle = "active"
+workflow = "generic"
+remote_policy = "personal"
+
+[repositories."sfabbro/allphot"]
+path = "sfabbro/allphot"
+class = "personal"
+lifecycle = "on_demand"
+workflow = "generic"
+remote_policy = "personal"
+
+[repositories."sfabbro/ccv"]
+path = "sfabbro/ccv"
+class = "personal"
+lifecycle = "on_demand"
+workflow = "generic"
+remote_policy = "personal"
+
+[repositories."sfabbro/masked-stellar-autoencoder"]
+path = "sfabbro/masked-stellar-autoencoder"
+class = "personal"
+lifecycle = "on_demand"
+workflow = "pixi"
+remote_policy = "personal"
+
+[repositories."sfabbro/tno_detection"]
+path = "sfabbro/tno_detection"
+class = "personal"
+lifecycle = "active"
+workflow = "canfar"
+remote_policy = "personal"
+
+[repositories."sfabbro/torchregress-research"]
+path = "sfabbro/torchregress-research"
+class = "personal"
+lifecycle = "active"
+workflow = "pixi"
+remote_policy = "personal"
+

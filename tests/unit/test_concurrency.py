@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.agent.agent_targets import McpTarget, _read_config, _write_config
-from astroai_lab.core.pathlock import path_lock
-from astroai_lab.errors import LabError
-from astroai_lab.utils.json_utils import write_json
+from canfar_lab.agent.agent_targets import McpTarget, _read_config, _write_config
+from canfar_lab.core.pathlock import path_lock
+from canfar_lab.errors import LabError
+from canfar_lab.utils.json_utils import write_json
 
 
 def test_write_json_is_atomic_and_parseable(tmp_path: Path) -> None:
@@ -73,7 +73,7 @@ def test_path_lock_other_host_not_stale_by_pid(
     """Cross-pod locks on shared home must not look dead via local os.kill."""
     import time
 
-    from astroai_lab.core import pathlock
+    from canfar_lab.core import pathlock
 
     monkeypatch.setattr(pathlock, "_hostname", lambda: "pod-a")
     lock = tmp_path / "remote.lock"

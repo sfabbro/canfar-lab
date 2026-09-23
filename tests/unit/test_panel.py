@@ -1,4 +1,4 @@
-"""Tests for astroai_lab.panel (headless review-bench runner)."""
+"""Tests for canfar_lab.panel (headless review-bench runner)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab import panel as panel_mod
-from astroai_lab.errors import LabError
+from canfar_lab import panel as panel_mod
+from canfar_lab.errors import LabError
 
 
 @pytest.fixture(autouse=True)
@@ -56,7 +56,7 @@ def test_build_task_carries_protocol_and_claims(tmp_path: Path) -> None:
 
 
 def test_panel_lenses_match_preset_tools() -> None:
-    from astroai_lab.agent.review_bench import vendored_review_bench_root
+    from canfar_lab.agent.review_bench import vendored_review_bench_root
 
     text = (
         vendored_review_bench_root() / "presets" / "review-bench" / "agent.cordis.yml"
@@ -69,7 +69,7 @@ def test_panel_lenses_match_preset_tools() -> None:
 
 
 def test_dsh_cmd_attaches_repo_patch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: "/opt/astroai/bin/dsh")
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: "/opt/astroai/bin/dsh")
     patch = tmp_path / ".dsh" / "cordis.patch.yml"
     patch.parent.mkdir(parents=True)
     patch.write_text("[]\n", encoding="utf-8")
@@ -81,7 +81,7 @@ def test_dsh_cmd_attaches_repo_patch(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
 
 def test_dsh_cmd_rejects_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: None)
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: None)
     with pytest.raises(LabError, match="No `dsh` executable"):
         panel_mod.dsh_cmd(patch=None, task="do it")
 
@@ -108,14 +108,14 @@ def test_run_panel_opencode_go_headless_errors_without_retarget(
 ) -> None:
     monkeypatch.setenv("OPENCODE_API_KEY", "zen")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "d-key")
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: "/opt/astroai/bin/dsh")
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: "/opt/astroai/bin/dsh")
     calls: list[list[str]] = []
 
     def fake_run(cmd, *, cwd=None, **_kwargs):  # noqa: ANN001
         calls.append(list(cmd))
         raise LabError("MissingSessionID / x-opencode-session required (Console Go 400)")
 
-    monkeypatch.setattr("astroai_lab.utils.subprocess.run", fake_run)
+    monkeypatch.setattr("canfar_lab.utils.subprocess.run", fake_run)
     with pytest.raises(LabError, match="does not change your Settings"):
         panel_mod.run_panel(tmp_path, "C1: x", "smoke", dry_run=False)
     assert len(calls) == 1
@@ -123,7 +123,7 @@ def test_run_panel_opencode_go_headless_errors_without_retarget(
 
 
 def test_scaffold_matches_template(tmp_path: Path) -> None:
-    from astroai_lab.agent.review_bench import vendored_review_bench_root
+    from canfar_lab.agent.review_bench import vendored_review_bench_root
 
     wrote = panel_mod.scaffold_repo_dsh(tmp_path)
     assert len(wrote) == 2

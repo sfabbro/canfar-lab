@@ -1,0 +1,19 @@
+modelRoles:
+  default: github-copilot/gpt-5.6-luna-1m
+  plan: github-copilot/gpt-5.6-terra-1m
+  designer: github-copilot/gpt-5.6-luna-1m
+  slow: github-copilot/gpt-5.6-terra-1m
+  task: github-copilot/gpt-5.6-luna-1m
+  advisor: github-copilot/gpt-5.6-terra-1m
+  vision: google-antigravity/gemini-3.7-flash
+  smol: google-antigravity/gemini-3.7-flash
+  tiny: google-antigravity/gemini-3.1-flash-lite
+  commit: opencode-go/glm-5.3
+defaultThinkingLevel: auto
+providers:
+  autoThinkingMaxEffort: xhigh
+task:
+  enableEffort: true
+  maxEffort: max
+  isolation:
+    mode: auto

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.home_layout import (
+from canfar_lab.core.home_layout import (
     AGENT_RUNTIME_DIRS,
     AGENT_RUNTIME_FORCE_DIRS,
     CLAUDE_RUNTIME_DIRS,
@@ -58,7 +58,7 @@ def test_small_existing_dir_is_relocated(env: Path) -> None:
 
 def test_oversized_dir_is_left_and_reported(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Non-forced Claude trees still respect MIGRATE_LIMIT_MB."""
-    from astroai_lab.core import home_layout
+    from canfar_lab.core import home_layout
 
     monkeypatch.setattr(home_layout, "MIGRATE_LIMIT_MB", 0)
     home, data = env
@@ -77,7 +77,7 @@ def test_oversized_omp_natives_are_force_relocated(
     env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """omp natives/Chrome must leave /arc even when hundreds of MB."""
-    from astroai_lab.core import home_layout
+    from canfar_lab.core import home_layout
 
     monkeypatch.setattr(home_layout, "MIGRATE_LIMIT_MB", 0)
     home, data = env
@@ -134,7 +134,7 @@ def test_harness_session_state_stays_on_home(env: Path) -> None:
 
 
 def test_repair_dsh_restores_scratch_symlinks(env: Path) -> None:
-    from astroai_lab.core.home_layout import repair_dsh_durable_dirs
+    from canfar_lab.core.home_layout import repair_dsh_durable_dirs
 
     home, data = env
     scratch_sessions = data / "_dsh" / "sessions"
@@ -203,7 +203,7 @@ def test_ensure_omp_xdg_roots_seeds_missing(tmp_path: Path) -> None:
 
 def test_ensure_agent_runtime_skips_synthetic_home(tmp_path: Path) -> None:
     """Unit-test homes must not get session-scratch symlinks."""
-    from astroai_lab.core.home_layout import ensure_agent_runtime_on_scratch
+    from canfar_lab.core.home_layout import ensure_agent_runtime_on_scratch
 
     fake = tmp_path / "not-real-home"
     fake.mkdir()
@@ -212,7 +212,7 @@ def test_ensure_agent_runtime_skips_synthetic_home(tmp_path: Path) -> None:
 
 def test_ensure_agent_runtime_on_real_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """install/setup entry point: env redirects + symlinks under the real home."""
-    from astroai_lab.core import home_layout as hl
+    from canfar_lab.core import home_layout as hl
 
     home = tmp_path / "home"
     scratch = tmp_path / "scratch"
@@ -258,7 +258,7 @@ def test_agent_cli_runtime_trees_are_relocated(env: Path) -> None:
 def test_oversized_codex_sessions_are_force_relocated(
     env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.core import home_layout
+    from canfar_lab.core import home_layout
 
     monkeypatch.setattr(home_layout, "MIGRATE_LIMIT_MB", 0)
     home, data = env

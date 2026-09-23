@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.bundle_path import bundle_root
-from astroai_lab.agent.setup import (
+from canfar_lab.agent.bundle_path import bundle_root
+from canfar_lab.agent.setup import (
     ensure_agent_dirs,
     install_goose_config,
     merge_claude_json,
@@ -14,7 +14,7 @@ from astroai_lab.agent.setup import (
     run_bundle,
     write_stamp,
 )
-from astroai_lab.cli.main import app
+from canfar_lab.cli.main import app
 
 runner = CliRunner()
 

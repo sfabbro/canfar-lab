@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab import config_dir, saves_dir
-from astroai_lab.config.settings import LabSettings, get_settings
-from astroai_lab.core.paths import resolve_paths
+from canfar_lab import config_dir, saves_dir
+from canfar_lab.config.settings import LabSettings, get_settings
+from canfar_lab.core.paths import resolve_paths
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +22,7 @@ def lab_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.delenv("WORK", raising=False)
     monkeypatch.delenv("SRCDIR", raising=False)
     monkeypatch.delenv("SCRATCH", raising=False)
-    monkeypatch.delenv("ASTROAI_LAB_SAVE_DIR", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_SAVE_DIR", raising=False)
     return home
 
 
@@ -84,7 +84,7 @@ def test_save_dir_default(lab_home: Path) -> None:
 
 def test_save_dir_override(lab_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     custom = lab_home / "custom-saves"
-    monkeypatch.setenv("ASTROAI_LAB_SAVE_DIR", str(custom))
+    monkeypatch.setenv("CANFAR_LAB_SAVE_DIR", str(custom))
     settings = LabSettings()
     assert settings.resolve_save_dir() == custom
 
@@ -109,7 +109,7 @@ def test_resolve_paths(lab_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_config_dir_ignores_legacy_canfar_lab(lab_home: Path) -> None:
-    from astroai_lab import config_dir
+    from canfar_lab import config_dir
 
     leftover = lab_home / ".canfar" / "lab"
     leftover.mkdir(parents=True)
@@ -151,11 +151,11 @@ def _fake_devs(
 def test_overlay_srcdir_relocates_to_scratch_src(
     lab_home: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from astroai_lab.core.session_common import overlay_work_dir
+    from canfar_lab.core.session_common import overlay_work_dir
 
     scratch = tmp_path / "scratch"
     scratch.mkdir()
-    monkeypatch.setattr("astroai_lab.core.session_common._dev", _fake_devs(scratch))
+    monkeypatch.setattr("canfar_lab.core.session_common._dev", _fake_devs(scratch))
     work = overlay_work_dir(Path("/srcdir"), scratch)
     assert work == scratch / "src"
     assert work.is_dir()
@@ -164,14 +164,14 @@ def test_overlay_srcdir_relocates_to_scratch_src(
 def test_overlay_keeps_bind_mounted_srcdir(
     lab_home: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from astroai_lab.core.session_common import overlay_work_dir
+    from canfar_lab.core.session_common import overlay_work_dir
 
     scratch = tmp_path / "scratch"
     srcdir = tmp_path / "srcdir"
     scratch.mkdir()
     srcdir.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.core.session_common._dev",
+        "canfar_lab.core.session_common._dev",
         _fake_devs(scratch, srcdir=srcdir, srcdir_dev=3, root_dev=1, scratch_dev=2),
     )
     assert overlay_work_dir(srcdir, scratch, srcdir=srcdir) is None
@@ -180,27 +180,27 @@ def test_overlay_keeps_bind_mounted_srcdir(
 def test_overlay_honors_explicit_work(
     lab_home: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from astroai_lab.core.session_common import overlay_work_dir
+    from canfar_lab.core.session_common import overlay_work_dir
 
     scratch = tmp_path / "scratch"
     custom = tmp_path / "custom"
     scratch.mkdir()
     custom.mkdir()
-    monkeypatch.setattr("astroai_lab.core.session_common._dev", _fake_devs(scratch))
+    monkeypatch.setattr("canfar_lab.core.session_common._dev", _fake_devs(scratch))
     assert overlay_work_dir(custom, scratch) is None
 
 
 def test_overlay_seeds_srcdir_once(
     lab_home: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from astroai_lab.core.session_common import overlay_work_dir
+    from canfar_lab.core.session_common import overlay_work_dir
 
     scratch = tmp_path / "scratch"
     srcdir = tmp_path / "overlay-src"
     scratch.mkdir()
     srcdir.mkdir()
     (srcdir / "hello.py").write_text("print(1)\n")
-    monkeypatch.setattr("astroai_lab.core.session_common._dev", _fake_devs(scratch))
+    monkeypatch.setattr("canfar_lab.core.session_common._dev", _fake_devs(scratch))
     work = overlay_work_dir(srcdir, scratch, srcdir=srcdir)
     assert work is not None
     assert (work / "hello.py").read_text() == "print(1)\n"
@@ -213,12 +213,12 @@ def test_overlay_seeds_srcdir_once(
 def test_overlay_disabled_by_env(
     lab_home: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from astroai_lab.core.session_common import overlay_work_dir
+    from canfar_lab.core.session_common import overlay_work_dir
 
     scratch = tmp_path / "scratch"
     scratch.mkdir()
-    monkeypatch.setenv("ASTROAI_LAB_WORK_ON_SCRATCH", "0")
-    monkeypatch.setattr("astroai_lab.core.session_common._dev", _fake_devs(scratch))
+    monkeypatch.setenv("CANFAR_LAB_WORK_ON_SCRATCH", "0")
+    monkeypatch.setattr("canfar_lab.core.session_common._dev", _fake_devs(scratch))
     assert overlay_work_dir(Path("/srcdir"), scratch) is None
 
 
@@ -229,6 +229,6 @@ def test_resolve_work_dir_relocates_when_srcdir_is_overlay(
     scratch.mkdir()
     monkeypatch.setenv("WORK", "/srcdir")
     monkeypatch.setenv("SCRATCH", str(scratch))
-    monkeypatch.setattr("astroai_lab.core.session_common._dev", _fake_devs(scratch))
+    monkeypatch.setattr("canfar_lab.core.session_common._dev", _fake_devs(scratch))
     settings = LabSettings()
     assert settings.resolve_work_dir() == scratch / "src"

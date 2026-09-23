@@ -65,7 +65,7 @@ astroai clone owner/repo --dir /arc/projects/mygroup
 ### `astroai run SCRIPT`
 
 Run a Python script on the Ray cluster and wait until it finishes. Discovers
-the Running ray-manager automatically (or uses `ASTROAI_RAY_JOBS_ADDRESS` /
+the Running ray-manager automatically (or uses `CANFAR_RAY_JOBS_ADDRESS` /
 `--address` if set). Inside the manager, localhost is the default. Do not use
 `ray job submit`.
 
@@ -288,7 +288,7 @@ AI agent MCP, rules, CLI installation, and plugins (skills via ``npx skills``).
 under `data/agent/agents/<id>.yaml` (`id`, `name`, `homepage`, `binary`,
 `install`, optional `config`, `verify`). `list` / `install` / `remove` /
 `verify` all read that set. CLIs land on `$SCRATCH/.local/bin`
-(`ASTROAI_LAB_BIN_DIR`); configs stay on `$HOME` (/arc/home). Skills via
+(`CANFAR_LAB_BIN_DIR`); configs stay on `$HOME` (/arc/home). Skills via
 ``npx skills`` (not AstroAI). Some ids still install via battle-tested
 `install.TOOLS` branches (same id appears in the list). CLI utilities such as
 `ast-grep` are installed via plugins (`ast-grep-cli`), not listed as agents.
@@ -349,10 +349,10 @@ Each plugin declares a support matrix (`agents:`), a `kind` (`mcp` / `tool` /
 `rule`), and how it is applied. MCP plugins use `agents: [mcp-hosts]`.
 `plugins install <id>` applies to every *installed* agent in the matrix by
 default; `--agent` scopes it. For `kind: mcp` that merge is an `mcpServers`
-entry with **dynamic URLs only** (e.g. `$ASTROAI_RAY_JOBS_ADDRESS`).
+entry with **dynamic URLs only** (e.g. `$CANFAR_RAY_JOBS_ADDRESS`).
 
 **`ray-manager-mcp`** configures `astroai mcp serve` (cluster plus
-jobs) with `$ASTROAI_RAY_JOBS_ADDRESS` resolved at runtime.
+jobs) with `$CANFAR_RAY_JOBS_ADDRESS` resolved at runtime.
 
 ## Not this CLI
 
@@ -383,14 +383,14 @@ current dir under `/arc/projects` or set explicitly.
 | Variable | Purpose |
 |----------|---------|
 | `SRCDIR` / `WORK` / `SCRATCH` / `PROJECT` | Set explicitly to override detected session paths. `SRCDIR` wins over `WORK` |
-| `ASTROAI_LAB_WORK_ON_SCRATCH` | Set `0` to keep `SRCDIR` on the container overlay (`/srcdir`) instead of `$SCRATCH/src` |
-| `ASTROAI_LAB_SAVE_DIR` | Env saves dir (default: `~/.astroai/lab/saves`) |
-| `ASTROAI_LAB_BIN_DIR` | User CLI install dir (default: `$SCRATCH/.local/bin`) |
-| `ASTROAI_LAB_RUNTIME_ROOT` | Runtime uv/pixi/mamba roots (default: scratch `.runtime-$USER`) |
-| `ASTROAI_LAB_NPM_PREFIX` | npm global prefix (default: parent of `ASTROAI_LAB_BIN_DIR`) |
-| `NPM_CONFIG_PREFIX` | Fallback npm prefix when `ASTROAI_LAB_NPM_PREFIX` is unset |
-| `ASTROAI_LAB_CONFIG_DIR` | Workbench config dir (default: `~/.astroai/lab`) |
-| `ASTROAI_LAB_PYTHONPATH` | Extra `PYTHONPATH` entries (colon-separated) |
+| `CANFAR_LAB_WORK_ON_SCRATCH` | Set `0` to keep `SRCDIR` on the container overlay (`/srcdir`) instead of `$SCRATCH/src` |
+| `CANFAR_LAB_SAVE_DIR` | Env saves dir (default: `~/.astroai/lab/saves`) |
+| `CANFAR_LAB_BIN_DIR` | User CLI install dir (default: `$SCRATCH/.local/bin`) |
+| `CANFAR_LAB_RUNTIME_ROOT` | Runtime uv/pixi/mamba roots (default: scratch `.runtime-$USER`) |
+| `CANFAR_LAB_NPM_PREFIX` | npm global prefix (default: parent of `CANFAR_LAB_BIN_DIR`) |
+| `NPM_CONFIG_PREFIX` | Fallback npm prefix when `CANFAR_LAB_NPM_PREFIX` is unset |
+| `CANFAR_LAB_CONFIG_DIR` | Workbench config dir (default: `~/.astroai/lab`) |
+| `CANFAR_LAB_PYTHONPATH` | Extra `PYTHONPATH` entries (colon-separated) |
 | `PYTHONPATH` | Existing entries are preserved and merged into the export |
 
 ### XDG, cache, and runtime dirs
@@ -416,7 +416,7 @@ is on home, they go to `/tmp/.cache-$USER`.
 
 ### Runtime roots and conda cache (uv/pixi/mamba)
 
-These are redirected to `ASTROAI_LAB_RUNTIME_ROOT` (default: scratch
+These are redirected to `CANFAR_LAB_RUNTIME_ROOT` (default: scratch
 `.runtime-$USER`) at session time, even though the image sets system-prefix
 build-time defaults.
 
@@ -432,17 +432,17 @@ build-time defaults.
 
 | Variable | Purpose |
 |----------|---------|
-| `ASTROAI_LAB_DEFAULT_PM` | Default package manager: `pixi` or `uv` (default: `pixi`) |
-| `ASTROAI_LAB_CLONE_FROM_ENV` | Default env preset for `astroai clone` |
+| `CANFAR_LAB_DEFAULT_PM` | Default package manager: `pixi` or `uv` (default: `pixi`) |
+| `CANFAR_LAB_CLONE_FROM_ENV` | Default env preset for `astroai clone` |
 
 ### AI agent management
 
 | Variable | Purpose |
 |----------|---------|
-| `ASTROAI_LAB_AGENT_BUNDLE` | Override the agent bundle root |
-| `ASTROAI_LAB_AGENT_GIT_TIMEOUT` | Git-op timeout, seconds (default: `120`) |
-| `ASTROAI_LAB_AGENT_INSTALL_TIMEOUT` | CLI-install timeout, seconds (default: `1500`; self-bootstrapping installers like hermes need more than 300) |
-| `ASTROAI_LAB_AGENT_LOCK_TIMEOUT` | Setup-lock timeout, seconds (default: `30`) |
+| `CANFAR_LAB_AGENT_BUNDLE` | Override the agent bundle root |
+| `CANFAR_LAB_AGENT_GIT_TIMEOUT` | Git-op timeout, seconds (default: `120`) |
+| `CANFAR_LAB_AGENT_INSTALL_TIMEOUT` | CLI-install timeout, seconds (default: `1500`; self-bootstrapping installers like hermes need more than 300) |
+| `CANFAR_LAB_AGENT_LOCK_TIMEOUT` | Setup-lock timeout, seconds (default: `30`) |
 | `ASTROAI_SESSION_KIND` | Session kind label for `agent list --ui` (default: `unknown`) |
 | `ASTROAI_AGENT_WIZARD_PORT` | Agent wizard port (default: `4792`) |
 | `ASTROAI_OPENWORKER_PORT` | OpenWorker port (default: `5000`) |
@@ -451,15 +451,15 @@ build-time defaults.
 
 | Variable | Purpose |
 |----------|---------|
-| `ASTROAI_LAB_SHELL_DIR` | Dir holding `profile.sh`/`hooks.sh` (default: `/etc/astroai-lab`) |
-| `ASTROAI_LAB_PROFILE_LOADED` | Set by `profile.sh` to avoid double-sourcing |
+| `CANFAR_LAB_SHELL_DIR` | Dir holding `profile.sh`/`hooks.sh` (default: `/etc/astroai-lab`) |
+| `CANFAR_LAB_PROFILE_LOADED` | Set by `profile.sh` to avoid double-sourcing |
 | `JUPYTER_CONFIG_DIR` | Jupyter config dir (default: `~/.jupyter`) |
 | `USER` / `HOSTNAME` | Identity labels used by `status` and `agent list --ui` |
 
 `astroai env export` also **emits** derived values for downstream tools,
-including `ASTROAI_LAB_TEAM_BIN` (when a team project is present),
-`ASTROAI_LAB_PATH_PREFIX` (consumed by the image's `/etc/profile.d/astroai.sh`),
-`UV_PYTHON_BIN_DIR`, `UV_TOOL_BIN_DIR` (both pointing at `ASTROAI_LAB_BIN_DIR`),
+including `CANFAR_LAB_TEAM_BIN` (when a team project is present),
+`CANFAR_LAB_PATH_PREFIX` (consumed by the image's `/etc/profile.d/astroai.sh`),
+`UV_PYTHON_BIN_DIR`, `UV_TOOL_BIN_DIR` (both pointing at `CANFAR_LAB_BIN_DIR`),
 `PYTHONUSERBASE`, `TRANSFORMERS_CACHE`, `HF_DATASETS_CACHE`, and
 `MPLCONFIGDIR`.
 

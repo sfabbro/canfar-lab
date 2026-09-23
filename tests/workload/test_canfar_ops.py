@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from astroai_workload.canfar_ops import CanfarOps
+from canfar_workload.canfar_ops import CanfarOps
 
 
 def test_list_headless_sessions_uses_own_catalog_not_view_all() -> None:

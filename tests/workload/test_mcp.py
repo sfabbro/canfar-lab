@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from astroai_workload.mcp import SERVER_INFO, handle_message
+from canfar_workload.mcp import SERVER_INFO, handle_message
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -87,7 +87,7 @@ def test_session_resources_survives_a_broken_snapshot(monkeypatch: pytest.Monkey
     def _boom(*_a: object, **_k: object) -> object:
         raise OSError("no /proc here")
 
-    monkeypatch.setattr("astroai_lab.core.session_resources.collect_resources", _boom)
+    monkeypatch.setattr("canfar_lab.core.session_resources.collect_resources", _boom)
     resp = handle_message(_rpc("tools/call", {"name": "session_resources", "arguments": {}}))
     assert "error" not in resp
     payload = json.loads(resp["result"]["content"][0]["text"])
@@ -103,9 +103,7 @@ def test_jobs_report_renders_markdown(monkeypatch: pytest.MonkeyPatch) -> None:
         },
         {"submission_id": "beta", "status": "succeeded"},
     ]
-    monkeypatch.setattr(
-        "astroai_workload.mcp.job_list_payload", lambda address=None: {"jobs": rows}
-    )
+    monkeypatch.setattr("canfar_workload.mcp.job_list_payload", lambda address=None: {"jobs": rows})
     resp = handle_message(_rpc("tools/call", {"name": "jobs_report", "arguments": {}}))
     payload = json.loads(resp["result"]["content"][0]["text"])
     assert payload["job_count"] == 2
@@ -119,9 +117,7 @@ def test_jobs_report_filters_one_run_and_handles_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rows = [{"run_id": "alpha", "status": "failed"}, {"run_id": "beta", "status": "running"}]
-    monkeypatch.setattr(
-        "astroai_workload.mcp.job_list_payload", lambda address=None: {"jobs": rows}
-    )
+    monkeypatch.setattr("canfar_workload.mcp.job_list_payload", lambda address=None: {"jobs": rows})
     resp = handle_message(
         _rpc("tools/call", {"name": "jobs_report", "arguments": {"run_id": "beta"}})
     )
@@ -129,7 +125,7 @@ def test_jobs_report_filters_one_run_and_handles_none(
     assert payload["job_count"] == 1
     assert payload["status_counts"] == {"running": 1}
 
-    monkeypatch.setattr("astroai_workload.mcp.job_list_payload", lambda address=None: {})
+    monkeypatch.setattr("canfar_workload.mcp.job_list_payload", lambda address=None: {})
     empty = json.loads(
         handle_message(_rpc("tools/call", {"name": "jobs_report", "arguments": {}}))["result"][
             "content"
@@ -141,7 +137,7 @@ def test_jobs_report_filters_one_run_and_handles_none(
 
 def test_tools_call_cluster_status(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {"cluster": {"phase": "Running"}, "joined_workers": 2}
-    monkeypatch.setattr("astroai_workload.mcp.cluster_status_payload", lambda address=None: payload)
+    monkeypatch.setattr("canfar_workload.mcp.cluster_status_payload", lambda address=None: payload)
     resp = handle_message(_rpc("tools/call", {"name": "cluster_status", "arguments": {}}))
     assert "error" not in resp
     assert json.loads(resp["result"]["content"][0]["text"]) == payload
@@ -156,9 +152,9 @@ def test_tools_call_cluster_start_business_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _boom(**kwargs):
-        raise RuntimeError("No manager found. Set ASTROAI_RAY_JOBS_ADDRESS or pass --address.")
+        raise RuntimeError("No manager found. Set CANFAR_RAY_JOBS_ADDRESS or pass --address.")
 
-    monkeypatch.setattr("astroai_workload.mcp.cluster_start_payload", _boom)
+    monkeypatch.setattr("canfar_workload.mcp.cluster_start_payload", _boom)
     resp = handle_message(_rpc("tools/call", {"name": "cluster_start", "arguments": {}}))
     assert resp["result"]["isError"] is True
     assert "No manager found" in resp["result"]["content"][0]["text"]
@@ -181,7 +177,7 @@ def test_tools_call_cluster_start_forwards_autoscaling_options(
             "autoscaling": True,
         }
 
-    monkeypatch.setattr("astroai_workload.mcp.cluster_start_payload", _fake)
+    monkeypatch.setattr("canfar_workload.mcp.cluster_start_payload", _fake)
 
     handle_message(
         _rpc(
@@ -216,7 +212,7 @@ def test_tools_list_cluster_start_schema_is_autoscaling_only() -> None:
 
 
 def test_tools_call_cluster_stop(monkeypatch: pytest.MonkeyPatch) -> None:
-    import astroai_workload.cli as cli_mod
+    import canfar_workload.cli as cli_mod
 
     calls: dict = {}
     monkeypatch.setattr(
@@ -243,7 +239,7 @@ def test_initialize_falls_back_for_unknown_protocol_version() -> None:
 
 def test_tools_call_dashboard_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "astroai_workload.mcp.dashboard_url_payload", lambda address=None: "http://127.0.0.1:8265"
+        "canfar_workload.mcp.dashboard_url_payload", lambda address=None: "http://127.0.0.1:8265"
     )
     resp = handle_message(_rpc("tools/call", {"name": "dashboard_url", "arguments": {}}))
     assert json.loads(resp["result"]["content"][0]["text"]) == {
@@ -259,7 +255,7 @@ def test_tools_call_job_run_requires_script() -> None:
 
 def test_tools_call_job_list(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "astroai_workload.mcp.job_list_payload",
+        "canfar_workload.mcp.job_list_payload",
         lambda address=None: {"jobs": [{"submission_id": "a", "status": "succeeded"}]},
     )
     resp = handle_message(_rpc("tools/call", {"name": "job_list", "arguments": {}}))
@@ -280,7 +276,7 @@ def test_tools_call_job_run_forwards(monkeypatch: pytest.MonkeyPatch) -> None:
         captured.update(kwargs)
         return {"run_id": "r1", "status": "succeeded", "logs": "ok\n"}
 
-    monkeypatch.setattr("astroai_workload.mcp.job_run_payload", _fake)
+    monkeypatch.setattr("canfar_workload.mcp.job_run_payload", _fake)
     resp = handle_message(
         _rpc(
             "tools/call",
@@ -329,7 +325,7 @@ def test_serve_stdio_subprocess_e2e() -> None:
         "not json",
     ]
     proc = subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "astroai_workload.cli", "mcp", "serve"],
+        [sys.executable, "-m", "canfar_workload.cli", "mcp", "serve"],
         input="\n".join(lines) + "\n",
         capture_output=True,
         text=True,

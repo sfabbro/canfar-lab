@@ -3,8 +3,8 @@ from __future__ import annotations
 import sys
 from unittest.mock import MagicMock, patch
 
-from astroai_lab.core.arc_permissions import GmsGroups
-from astroai_lab.core.vospace_status import (
+from canfar_lab.core.arc_permissions import GmsGroups
+from canfar_lab.core.vospace_status import (
     VaultNodeStatus,
     VaultStatus,
     candidate_vault_names,
@@ -86,11 +86,11 @@ def test_vault_statuses_with_mock_client() -> None:
     with (
         patch.dict(sys.modules, {"vos": MagicMock()}),
         patch(
-            "astroai_lab.core.vospace_status._vos_client",
+            "canfar_lab.core.vospace_status._vos_client",
             return_value=(client, "anonymous"),
         ),
         patch(
-            "astroai_lab.core.vospace_status.candidate_vault_names",
+            "canfar_lab.core.vospace_status.candidate_vault_names",
             return_value=["team"],
         ),
     ):
@@ -108,11 +108,11 @@ def test_vault_statuses_empty_candidates() -> None:
     with (
         patch.dict(sys.modules, {"vos": MagicMock()}),
         patch(
-            "astroai_lab.core.vospace_status._vos_client",
+            "canfar_lab.core.vospace_status._vos_client",
             return_value=(client, "netrc"),
         ),
         patch(
-            "astroai_lab.core.vospace_status.candidate_vault_names",
+            "canfar_lab.core.vospace_status.candidate_vault_names",
             return_value=[],
         ),
     ):
@@ -127,7 +127,7 @@ def test_candidate_vault_names_deduplicates(monkeypatch) -> None:
     monkeypatch.setenv("USER", "alice")
     client = MagicMock()
     with patch(
-        "astroai_lab.core.vospace_status._discover_vault_names",
+        "canfar_lab.core.vospace_status._discover_vault_names",
         return_value=["Team", "extra"],
     ):
         names = candidate_vault_names(
@@ -178,7 +178,7 @@ def test_vault_quota_line() -> None:
 
 
 def test_discover_vault_names() -> None:
-    from astroai_lab.core.vospace_status import _discover_vault_names
+    from canfar_lab.core.vospace_status import _discover_vault_names
 
     child1 = MagicMock()
     child1.name = "proj1"

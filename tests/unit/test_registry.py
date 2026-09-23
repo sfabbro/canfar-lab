@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.registry import (
+from canfar_lab.agent.registry import (
     fix_registry_agent,
     get_registry_agent,
     install_registry_agent,
@@ -25,8 +25,8 @@ from astroai_lab.agent.registry import (
     setup_registry_agent,
     update_registry_agent,
 )
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 
@@ -171,7 +171,7 @@ def test_registry_agent_status_binary_only(monkeypatch: pytest.MonkeyPatch) -> N
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _fake_classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _fake_classify)
     status = registry_agent_status(hermes, home=Path("/nonexistent-home"))
     assert status["id"] == "hermes"
     assert status["binary_ok"] is True
@@ -200,7 +200,7 @@ def test_agy_cfg_present_without_settings_file(
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _fake_classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _fake_classify)
     status = registry_agent_status(agy, home=home)
     assert status["config_declared"] is True
     assert status["config_present"] is True
@@ -222,7 +222,7 @@ def test_agy_cfg_absent_without_gemini_dir(tmp_path: Path, monkeypatch: pytest.M
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _fake_classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _fake_classify)
     status = registry_agent_status(agy, home=tmp_path / "empty-home")
     assert status["config_present"] is False
     assert status["config_ok"] is False
@@ -245,7 +245,7 @@ def test_registry_agent_status_full(tmp_path: Path, monkeypatch: pytest.MonkeyPa
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _fake_classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _fake_classify)
     status = registry_agent_status(openclaw, home=home)
     assert status["config_ok"] is True
     assert status["config_present"] is True
@@ -256,7 +256,7 @@ def test_registry_agent_status_full(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 def test_probe_version_parses_semver(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import os
 
-    from astroai_lab.agent.registry import probe_version
+    from canfar_lab.agent.registry import probe_version
 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -265,7 +265,7 @@ def test_probe_version_parses_semver(tmp_path: Path, monkeypatch: pytest.MonkeyP
     fake.write_text("#!/bin/sh\nsleep 1.2\necho 'slowcli 9.8.7'\n", encoding="utf-8")
     fake.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
-    monkeypatch.delenv("ASTROAI_LAB_PROBE_VERSION", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_PROBE_VERSION", raising=False)
     assert probe_version("slowcli") == "9.8.7"
 
 
@@ -274,7 +274,7 @@ def test_probe_version_resolves_session_bin(
 ) -> None:
     from types import SimpleNamespace
 
-    from astroai_lab.agent.registry import probe_version
+    from canfar_lab.agent.registry import probe_version
 
     bin_dir = tmp_path / "session-bin"
     bin_dir.mkdir()
@@ -283,38 +283,38 @@ def test_probe_version_resolves_session_bin(
     fake.chmod(0o755)
 
     session = SimpleNamespace(
-        astroai_lab_bin_dir=bin_dir,
-        astroai_lab_npm_prefix=tmp_path / "npm",
+        canfar_lab_bin_dir=bin_dir,
+        canfar_lab_npm_prefix=tmp_path / "npm",
     )
     monkeypatch.setattr(
-        "astroai_lab.shell.session_env.resolve_session_env",
+        "canfar_lab.shell.session_env.resolve_session_env",
         lambda *, ensure=False: session,  # noqa: ARG005
     )
     # Not on PATH — only session bin.
     monkeypatch.setenv("PATH", "/usr/bin:/bin")
-    monkeypatch.delenv("ASTROAI_LAB_PROBE_VERSION", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_PROBE_VERSION", raising=False)
     assert probe_version("sesscli") == "1.2.3"
 
 
 def test_probe_version_respects_disable_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent.registry import probe_version
+    from canfar_lab.agent.registry import probe_version
 
-    monkeypatch.setenv("ASTROAI_LAB_PROBE_VERSION", "0")
+    monkeypatch.setenv("CANFAR_LAB_PROBE_VERSION", "0")
     assert probe_version("python3") is None
 
 
 def test_probe_agent_version_uses_registry_args(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent.registry import get_registry_agent, probe_agent_version
+    from canfar_lab.agent.registry import get_registry_agent, probe_agent_version
 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     cli = bin_dir / "freebuff"
     cli.write_text("#!/bin/sh\necho slowbuff 9.9.9\n", encoding="utf-8")
     cli.chmod(0o755)
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(bin_dir))
-    monkeypatch.delenv("ASTROAI_LAB_PROBE_VERSION", raising=False)
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(bin_dir))
+    monkeypatch.delenv("CANFAR_LAB_PROBE_VERSION", raising=False)
 
     agent = get_registry_agent("freebuff")
     assert agent is not None
@@ -325,7 +325,7 @@ def test_probe_agent_launch_uses_registry_args(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """verify must use the same argv as list (freebuff -v, not --version)."""
-    from astroai_lab.agent.registry import get_registry_agent, probe_agent_launch
+    from canfar_lab.agent.registry import get_registry_agent, probe_agent_launch
 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -339,8 +339,8 @@ def test_probe_agent_launch_uses_registry_args(
         encoding="utf-8",
     )
     cli.chmod(0o755)
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(bin_dir))
-    monkeypatch.delenv("ASTROAI_LAB_PROBE_VERSION", raising=False)
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(bin_dir))
+    monkeypatch.delenv("CANFAR_LAB_PROBE_VERSION", raising=False)
 
     agent = get_registry_agent("freebuff")
     assert agent is not None
@@ -348,7 +348,7 @@ def test_probe_agent_launch_uses_registry_args(
 
 
 def test_omp_cfg_detects_dot_omp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent.registry import get_registry_agent, registry_agent_status
+    from canfar_lab.agent.registry import get_registry_agent, registry_agent_status
 
     omp = get_registry_agent("omp")
     assert omp is not None
@@ -367,7 +367,7 @@ def test_omp_cfg_detects_dot_omp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyP
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _fake_classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _fake_classify)
     status = registry_agent_status(omp, home=home)
     assert status["config_present"] is True
 
@@ -400,7 +400,7 @@ def _fake_classify(
 def test_verify_issues_nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
     # Nothing managed → installed_only reports nothing (fresh image gate).
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
     assert registry_verify_issues(home=Path("/nonexistent-home"), installed_only=True) == []
@@ -408,7 +408,7 @@ def test_verify_issues_nothing_installed(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_verify_issues_full_reports_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
     issues = registry_verify_issues(home=Path("/nonexistent-home"), installed_only=False)
@@ -421,7 +421,7 @@ def test_verify_issues_installed_missing_config(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="managed", managed=True, path="/tmp/x"),
     )
     issues = registry_verify_issues(home=home, installed_only=True)
@@ -442,10 +442,10 @@ def test_install_registry_agent_tools_dispatch(monkeypatch: pytest.MonkeyPatch) 
     # hermes/openclaw/cursor exist in install.TOOLS → keep the battle-tested installer.
     calls: list[tuple[str, bool]] = []
     monkeypatch.setattr(
-        "astroai_lab.agent.install.install_tool",
+        "canfar_lab.agent.install.install_tool",
         lambda name, dry_run=False: calls.append((name, dry_run)),
     )
-    monkeypatch.setattr("astroai_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
     install_registry_agent("hermes", dry_run=True)
     assert calls == [("hermes", True)]
     calls.clear()
@@ -455,7 +455,7 @@ def test_install_registry_agent_tools_dispatch(monkeypatch: pytest.MonkeyPatch) 
 
 def test_install_registry_agent_migrated_not_in_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     """Migrated agents no longer resolve through install.TOOLS."""
-    from astroai_lab.agent import install as install_mod
+    from canfar_lab.agent import install as install_mod
 
     calls: list[str] = []
     monkeypatch.setattr(install_mod, "install_tool", lambda name, dry_run=False: calls.append(name))
@@ -473,8 +473,8 @@ def test_install_registry_agent_curl_env_bin_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """_install_curl expands {bin_dir} tokens in install.env (goose/kilo/opencode)."""
-    from astroai_lab.agent import install as install_mod
-    from astroai_lab.agent import registry as registry_mod
+    from canfar_lab.agent import install as install_mod
+    from canfar_lab.agent import registry as registry_mod
 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -504,8 +504,8 @@ def test_install_registry_agent_curl_env_bin_dir(
 
 def test_install_gh_release_templates_arch(monkeypatch: pytest.MonkeyPatch) -> None:
     """_install_gh_release replaces {arch} with platform.machine() (codex)."""
-    from astroai_lab.agent import install as install_mod
-    from astroai_lab.agent import registry as registry_mod
+    from canfar_lab.agent import install as install_mod
+    from canfar_lab.agent import registry as registry_mod
 
     seen: list[tuple[str, str]] = []
     monkeypatch.setattr(
@@ -531,9 +531,9 @@ def test_install_gh_release_templates_arch(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_install_registry_agent_curl_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
     # A registry-only agent (not in TOOLS) with method curl → curl installer.
-    from astroai_lab.agent import registry as registry_mod
+    from canfar_lab.agent import registry as registry_mod
 
-    monkeypatch.setattr("astroai_lab.agent.install.TOOLS", {}, raising=False)
+    monkeypatch.setattr("canfar_lab.agent.install.TOOLS", {}, raising=False)
 
     def fake_install_npm(agent):  # pragma: no cover
         return "never"
@@ -544,7 +544,7 @@ def test_install_registry_agent_curl_dispatch(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(registry_mod, "_install_gh_release", fake_install_npm)
 
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
     agent = {
@@ -566,7 +566,7 @@ def test_agent_list_includes_every_tools_entry() -> None:
 
     Exception: ``node`` / ``ast-grep`` are TOOLS utilities, not list agents.
     """
-    from astroai_lab.agent.install import TOOL_UTILITIES, TOOLS
+    from canfar_lab.agent.install import TOOL_UTILITIES, TOOLS
 
     ids = {a["id"] for a in list_registry_agents()}
     assert set(TOOLS) - TOOL_UTILITIES <= ids
@@ -587,10 +587,10 @@ def test_kilo_and_opencode_curl_skip_shell_rc() -> None:
 def test_cli_agent_list_covers_installable_set(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent.install import TOOL_UTILITIES, TOOLS
+    from canfar_lab.agent.install import TOOL_UTILITIES, TOOLS
 
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("ASTROAI_LAB_PROBE_VERSION", "0")
+    monkeypatch.setenv("CANFAR_LAB_PROBE_VERSION", "0")
     result = runner.invoke(app, ["--json", "agent", "list"])
     assert result.exit_code in (0, 1)
     data = json.loads(result.stdout)
@@ -605,7 +605,7 @@ def test_cli_agent_install_needs_name(tmp_path: Path, monkeypatch: pytest.Monkey
     result = runner.invoke(app, ["--json", "agent", "install"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
-    assert data["help"] == "astroai agent install NAME [NAME…]"
+    assert data["help"] == "canfar agent install NAME [NAME…]"
     assert "list" in data["try"]
 
 
@@ -639,7 +639,7 @@ def test_cli_agent_install_multiple_json_dry_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("astroai_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
     result = runner.invoke(app, ["--json", "--dry-run", "agent", "install", "kilo", "not-an-agent"])
     assert result.exit_code == 1
     data = json.loads(result.stdout)
@@ -654,7 +654,7 @@ def test_cli_agent_install_partial_failure_shows_summary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("astroai_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
     result = runner.invoke(app, ["--dry-run", "agent", "install", "kilo", "not-an-agent"])
     assert result.exit_code == 1
     assert "1/2 install(s) failed" in result.output
@@ -668,10 +668,10 @@ def test_verify_setup_includes_registry_for_installed(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
-    from astroai_lab.agent.inventory import verify_setup
+    from canfar_lab.agent.inventory import verify_setup
 
     issues = verify_setup(home)
     assert not any("binary not found" in i and "hermes" in i for i in issues)
@@ -682,16 +682,16 @@ def test_classify_ignores_system_sg(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     """Linux /usr/bin/sg (newgrp) must not count as ast-grep."""
     from pathlib import Path as P
 
-    from astroai_lab.agent.install import _is_system_sg_impostor, classify_binary
-    from astroai_lab.config.settings import get_settings
+    from canfar_lab.agent.install import _is_system_sg_impostor, classify_binary
+    from canfar_lab.config.settings import get_settings
 
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(tmp_path / "nobin"))
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(tmp_path / "nobin"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     (tmp_path / "home").mkdir()
     get_settings.cache_clear()
-    monkeypatch.setattr("astroai_lab.agent.install.managed_bin_roots", list)
+    monkeypatch.setattr("canfar_lab.agent.install.managed_bin_roots", list)
     monkeypatch.setattr(
-        "astroai_lab.agent.install.shutil.which",
+        "canfar_lab.agent.install.shutil.which",
         lambda name: "/usr/bin/sg" if name == "sg" else None,
     )
     info = classify_binary("sg", home=tmp_path / "home")
@@ -707,7 +707,7 @@ def test_classify_ignores_system_sg(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 @pytest.fixture
 def _no_plugins(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep setup/update tests hermetic: no real plugin application."""
-    monkeypatch.setattr("astroai_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
+    monkeypatch.setattr("canfar_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
 
 
 def test_setup_registry_agent_unknown() -> None:
@@ -796,7 +796,7 @@ def test_setup_registry_agent_post_install_opt_in(
     home = tmp_path / "home"
     home.mkdir()
     ran: list[str] = []
-    monkeypatch.setattr("astroai_lab.agent.registry._run_post_install", lambda cmd: ran.append(cmd))
+    monkeypatch.setattr("canfar_lab.agent.registry._run_post_install", lambda cmd: ran.append(cmd))
     # default: not run
     setup_registry_agent("openclaw", home=home)
     assert ran == []
@@ -809,12 +809,12 @@ def test_setup_registry_agent_post_install_opt_in(
 def test_setup_registry_agent_plugin_errors_mark_failed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent.plugins import PluginResult
+    from canfar_lab.agent.plugins import PluginResult
 
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [PluginResult("ray-manager-mcp", "hermes", "failed", "boom")],
     )
     result = setup_registry_agent("hermes", home=home)
@@ -826,8 +826,8 @@ def test_setup_registry_agent_applies_defaults_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """setup <id> must not auto-install every opt-in skill (polars, etc.)."""
-    from astroai_lab.agent import plugins as plugins_mod
-    from astroai_lab.agent.plugins import PluginResult
+    from canfar_lab.agent import plugins as plugins_mod
+    from canfar_lab.agent.plugins import PluginResult
 
     home = tmp_path / "home"
     home.mkdir()
@@ -840,7 +840,7 @@ def test_setup_registry_agent_applies_defaults_only(
     monkeypatch.setattr(plugins_mod, "install_plugin", fake_install)
     # Pretend cursor is installed so installed_only does not filter the matrix.
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         lambda *a, **k: {
             "binary": "agent",
             "path": "/tmp/agent",
@@ -863,7 +863,7 @@ def test_list_installed_registry_agents(tmp_path: Path, monkeypatch: pytest.Monk
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="managed", managed=True, path="/tmp/x"),
     )
     ids = [a["id"] for a in list_installed_registry_agents(home)]
@@ -877,7 +877,7 @@ def test_list_installed_includes_home_owned(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="home", managed=False, home_install=True, path="/home/x/bin/kilo"),
     )
     ids = [a["id"] for a in list_installed_registry_agents(home)]
@@ -890,7 +890,7 @@ def test_verify_issues_includes_home_owned_missing_config(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="home", managed=False, home_install=True, path="/home/x/bin/x"),
     )
     issues = registry_verify_issues(home=home, installed_only=True)
@@ -903,21 +903,21 @@ def test_repair_restores_agent_launch(tmp_path: Path, monkeypatch: pytest.Monkey
     import stat
     import subprocess
 
-    from astroai_lab.agent.fix import repair_installed_agents
-    from astroai_lab.agent.inventory import verify_setup
-    from astroai_lab.agent.registry import probe_launch
+    from canfar_lab.agent.fix import repair_installed_agents
+    from canfar_lab.agent.inventory import verify_setup
+    from canfar_lab.agent.registry import probe_launch
 
     home = tmp_path / "home"
     bin_dir = tmp_path / "bin"
     home.mkdir()
     bin_dir.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(bin_dir))
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(bin_dir))
     # Prefer fake bin dir, but keep system tools (cat) for the stub script.
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin")
     # Enable launch probing for this test only (conftest sets 0).
-    monkeypatch.setenv("ASTROAI_LAB_PROBE_VERSION", "1")
-    from astroai_lab.config.settings import get_settings
+    monkeypatch.setenv("CANFAR_LAB_PROBE_VERSION", "1")
+    from canfar_lab.config.settings import get_settings
 
     get_settings.cache_clear()
 
@@ -941,7 +941,7 @@ def test_repair_restores_agent_launch(tmp_path: Path, monkeypatch: pytest.Monkey
             "home_path": None,
         }
 
-    monkeypatch.setattr("astroai_lab.agent.install.classify_binary", _classify)
+    monkeypatch.setattr("canfar_lab.agent.install.classify_binary", _classify)
 
     # Fake kilo: --version fails when config has no `{` (broken / missing).
     kilo = bin_dir / "kilo"
@@ -1005,7 +1005,7 @@ def test_repair_restores_agent_launch(tmp_path: Path, monkeypatch: pytest.Monkey
 
 def test_cli_setup_agent_registry_driven(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("astroai_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
+    monkeypatch.setattr("canfar_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
     result = runner.invoke(app, ["--json", "agent", "setup", "hermes"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
@@ -1016,7 +1016,7 @@ def test_cli_setup_agent_registry_driven(tmp_path: Path, monkeypatch: pytest.Mon
 
 def test_cli_setup_mixed_bundle_and_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("astroai_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
+    monkeypatch.setattr("canfar_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
     result = runner.invoke(app, ["--json", "--dry-run", "agent", "setup", "cli", "hermes"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
@@ -1034,12 +1034,12 @@ def test_update_registry_agent_up_to_date(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="managed", managed=True, path="/tmp/x"),
     )
     calls: list[str] = []
     monkeypatch.setattr(
-        "astroai_lab.agent.registry.install_registry_agent",
+        "canfar_lab.agent.registry.install_registry_agent",
         lambda name, dry_run=False: calls.append(name),
     )
     result = update_registry_agent("hermes", home=home)
@@ -1053,12 +1053,12 @@ def test_update_registry_agent_installs_when_missing(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
     calls: list[str] = []
     monkeypatch.setattr(
-        "astroai_lab.agent.registry.install_registry_agent",
+        "canfar_lab.agent.registry.install_registry_agent",
         lambda name, dry_run=False: calls.append(name) or name,
     )
     result = update_registry_agent("hermes", home=home)
@@ -1072,12 +1072,12 @@ def test_update_registry_agent_reinstall_flag(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="managed", managed=True, path="/tmp/x"),
     )
     calls: list[str] = []
     monkeypatch.setattr(
-        "astroai_lab.agent.registry.install_registry_agent",
+        "canfar_lab.agent.registry.install_registry_agent",
         lambda name, dry_run=False: calls.append(name) or name,
     )
     result = update_registry_agent("hermes", home=home, force_reinstall=True)
@@ -1091,14 +1091,14 @@ def test_update_registry_agent_install_failure_marks_error(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
 
     def boom(name, dry_run=False):  # pragma: no cover
         raise LabError("install failed")
 
-    monkeypatch.setattr("astroai_lab.agent.registry.install_registry_agent", boom)
+    monkeypatch.setattr("canfar_lab.agent.registry.install_registry_agent", boom)
     result = update_registry_agent("hermes", home=home)
     assert result["ok"] is False
     assert any("install failed" in e for e in result["errors"])
@@ -1107,10 +1107,10 @@ def test_update_registry_agent_install_failure_marks_error(
 def test_cli_update_agent_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="managed", managed=True, path="/tmp/x"),
     )
-    monkeypatch.setattr("astroai_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
+    monkeypatch.setattr("canfar_lab.agent.plugins.apply_agent_plugins", lambda *a, **k: [])
     result = runner.invoke(app, ["--json", "--dry-run", "agent", "update", "hermes"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
@@ -1131,7 +1131,7 @@ def test_fix_registry_agent_unknown() -> None:
 
 def test_fix_registry_agent_scaffolds_missing_config(tmp_path: Path) -> None:
     """Missing config → scaffolded (and the scaffold must parse back)."""
-    from astroai_lab.agent import agent_config as ac
+    from canfar_lab.agent import agent_config as ac
 
     home = tmp_path / "home"
     home.mkdir()
@@ -1159,7 +1159,7 @@ def test_fix_registry_agent_reports_healthy_existing(tmp_path: Path) -> None:
 
 
 def test_fix_registry_agent_repairs_broken_jsonc(tmp_path: Path) -> None:
-    from astroai_lab.agent import agent_config as ac
+    from canfar_lab.agent import agent_config as ac
 
     home = tmp_path / "home"
     cfg = home / ".config" / "kilo" / "kilo.jsonc"
@@ -1174,7 +1174,7 @@ def test_fix_registry_agent_repairs_broken_jsonc(tmp_path: Path) -> None:
 
 
 def test_fix_registry_agent_repairs_broken_toml(tmp_path: Path) -> None:
-    from astroai_lab.agent import agent_config as ac
+    from canfar_lab.agent import agent_config as ac
 
     home = tmp_path / "home"
     cfg = home / ".codex" / "config.toml"
@@ -1245,7 +1245,7 @@ def test_fix_registry_agent_dry_run_broken_config_untouched(tmp_path: Path) -> N
 
 def test_setup_scaffold_parses_for_json5(tmp_path: Path, _no_plugins) -> None:
     """Regression: the json5 scaffold uses `//` headers so it parses back."""
-    from astroai_lab.agent import agent_config as ac
+    from canfar_lab.agent import agent_config as ac
 
     home = tmp_path / "home"
     home.mkdir()
@@ -1281,7 +1281,7 @@ def test_cli_fix_config_all_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     """`--fix --all` matches bare `--fix` (shared repair + verify payload)."""
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         _fake_classify(source="missing"),
     )
     result = runner.invoke(app, ["--json", "agent", "verify", "--fix", "--all"])

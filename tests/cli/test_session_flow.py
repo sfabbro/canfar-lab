@@ -8,11 +8,11 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.cli.main import app
-from astroai_lab.config.settings import get_settings
-from astroai_lab.core.git import git_init_and_commit, git_status
-from astroai_lab.core.project import save_env, save_rows
-from astroai_lab.models.manifest import ProjectKind
+from canfar_lab.cli.main import app
+from canfar_lab.config.settings import get_settings
+from canfar_lab.core.git import git_init_and_commit, git_status
+from canfar_lab.core.project import save_env, save_rows
+from canfar_lab.models.manifest import ProjectKind
 
 runner = CliRunner()
 
@@ -50,7 +50,7 @@ def test_git_init_and_commit(tmp_path: Path) -> None:
     repo = tmp_path / "newrepo"
     repo.mkdir()
     (repo / "README.md").write_text("hi")
-    with patch("astroai_lab.utils.subprocess.run") as mock_run:
+    with patch("canfar_lab.utils.subprocess.run") as mock_run:
         git_init_and_commit(repo)
     assert mock_run.call_count >= 3
 
@@ -72,10 +72,10 @@ def test_save_env_creates_manifest(lab_env: Path) -> None:
 
 def test_status_command(lab_env: Path) -> None:
     with (
-        patch("astroai_lab.cli.status.collect_status_quotas", return_value=[]),
-        patch("astroai_lab.cli.status.arc_project_statuses", return_value=(None, [], None, None)),
-        patch("astroai_lab.cli.status.home_breakdown", return_value=[]),
-        patch("astroai_lab.cli.status.top_cpu_processes", return_value=[]),
+        patch("canfar_lab.cli.status.collect_status_quotas", return_value=[]),
+        patch("canfar_lab.cli.status.arc_project_statuses", return_value=(None, [], None, None)),
+        patch("canfar_lab.cli.status.home_breakdown", return_value=[]),
+        patch("canfar_lab.cli.status.top_cpu_processes", return_value=[]),
     ):
         for argv in (["status"], ["status", "--json"], ["--json", "status"], ["status", "-v"]):
             result = runner.invoke(app, argv)
@@ -84,10 +84,10 @@ def test_status_command(lab_env: Path) -> None:
 
 def test_status_verbose_timings_on_stderr(lab_env: Path) -> None:
     with (
-        patch("astroai_lab.cli.status.collect_status_quotas", return_value=[]),
-        patch("astroai_lab.cli.status.arc_project_statuses", return_value=(None, [], None, None)),
-        patch("astroai_lab.cli.status.home_breakdown", return_value=[]),
-        patch("astroai_lab.cli.status.top_cpu_processes", return_value=[]),
+        patch("canfar_lab.cli.status.collect_status_quotas", return_value=[]),
+        patch("canfar_lab.cli.status.arc_project_statuses", return_value=(None, [], None, None)),
+        patch("canfar_lab.cli.status.home_breakdown", return_value=[]),
+        patch("canfar_lab.cli.status.top_cpu_processes", return_value=[]),
     ):
         result = runner.invoke(app, ["status", "-v", "--json"])
     assert result.exit_code == 0, result.output
@@ -99,8 +99,8 @@ def test_status_verbose_timings_on_stderr(lab_env: Path) -> None:
 
 
 def test_status_canfar_timeout_graceful(lab_env: Path) -> None:
-    from astroai_lab.cli.status import CANFAR_CMD_TIMEOUT_SEC
-    from astroai_lab.errors import LabError
+    from canfar_lab.cli.status import CANFAR_CMD_TIMEOUT_SEC
+    from canfar_lab.errors import LabError
 
     calls: list[tuple[list[str], dict[str, object]]] = []
 
@@ -109,12 +109,12 @@ def test_status_canfar_timeout_graceful(lab_env: Path) -> None:
         raise LabError(f"Command timed out: {cmd[0]}")
 
     with (
-        patch("astroai_lab.cli.status.shutil.which", return_value="/usr/bin/canfar"),
-        patch("astroai_lab.cli.status.run_capture", side_effect=_slow_canfar),
-        patch("astroai_lab.cli.status.collect_status_quotas", return_value=[]),
-        patch("astroai_lab.cli.status.arc_project_statuses", return_value=(None, [], None, None)),
-        patch("astroai_lab.cli.status.home_breakdown", return_value=[]),
-        patch("astroai_lab.cli.status.top_cpu_processes", return_value=[]),
+        patch("canfar_lab.cli.status.shutil.which", return_value="/usr/bin/canfar"),
+        patch("canfar_lab.cli.status.run_capture", side_effect=_slow_canfar),
+        patch("canfar_lab.cli.status.collect_status_quotas", return_value=[]),
+        patch("canfar_lab.cli.status.arc_project_statuses", return_value=(None, [], None, None)),
+        patch("canfar_lab.cli.status.home_breakdown", return_value=[]),
+        patch("canfar_lab.cli.status.top_cpu_processes", return_value=[]),
     ):
         result = runner.invoke(app, ["status", "--json"])
     assert result.exit_code == 0, result.output
@@ -127,7 +127,7 @@ def test_status_canfar_timeout_graceful(lab_env: Path) -> None:
 
 
 def test_status_json_includes_arc_projects(lab_env: Path) -> None:
-    from astroai_lab.core.storage import ArcProjectInfo, QuotaLine
+    from canfar_lab.core.storage import ArcProjectInfo, QuotaLine
 
     active = ArcProjectInfo(
         name="mygroup",
@@ -144,13 +144,13 @@ def test_status_json_includes_arc_projects(lab_env: Path) -> None:
         is_cwd=True,
     )
     with (
-        patch("astroai_lab.cli.status.collect_status_quotas", return_value=[active.quota]),
+        patch("canfar_lab.cli.status.collect_status_quotas", return_value=[active.quota]),
         patch(
-            "astroai_lab.cli.status.arc_project_statuses",
+            "canfar_lab.cli.status.arc_project_statuses",
             return_value=(active, [active], None, None),
         ),
-        patch("astroai_lab.cli.status.home_breakdown", return_value=[]),
-        patch("astroai_lab.cli.status.top_cpu_processes", return_value=[]),
+        patch("canfar_lab.cli.status.home_breakdown", return_value=[]),
+        patch("canfar_lab.cli.status.top_cpu_processes", return_value=[]),
     ):
         result = runner.invoke(app, ["status", "--json"])
     assert result.exit_code == 0

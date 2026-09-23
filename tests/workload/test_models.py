@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from astroai_workload.models import (
+from canfar_workload.models import (
     DataProductRef,
     ProvenanceManifest,
     ResourceRequest,
@@ -31,7 +31,7 @@ def test_resource_request_validates_and_freezes_custom_resources() -> None:
 
 
 def test_resource_request_accepts_human_memory() -> None:
-    from astroai_workload import format_memory, parse_memory
+    from canfar_workload import format_memory, parse_memory
 
     assert parse_memory("4GiB") == 4 * 1024**3
     assert parse_memory("512MiB") == 512 * 1024**2

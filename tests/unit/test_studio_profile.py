@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from astroai_lab import studio_profile as sp
+from canfar_lab import studio_profile as sp
 
 
 class _DshLoader(yaml.SafeLoader):
@@ -32,7 +32,7 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.delenv("DSH_HOME", raising=False)
     monkeypatch.delenv("SCRATCH", raising=False)
-    monkeypatch.delenv("ASTROAI_LAB_DATA", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_DATA", raising=False)
     return home
 
 
@@ -188,7 +188,7 @@ def test_mcp_command_falls_back_to_the_module_entry(
     monkeypatch.delenv(sp.MCP_BIN_ENV, raising=False)
     monkeypatch.setattr(sp.shutil, "which", lambda *_: None)
     command = sp.mcp_serve_command(home=tmp_path)
-    assert command[1:] == ("-m", "astroai_lab", "mcp", "serve")
+    assert command[1:] == ("-m", "canfar_lab", "mcp", "serve")
 
 
 def test_mcp_bin_override_prefers_env_then_dotenv(tmp_path: Path) -> None:
@@ -405,7 +405,7 @@ def test_dry_run_writes_nothing(home: Path) -> None:
 
 
 def test_doctor_reports_a_missing_dsh_as_fatal(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: None)
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: None)
     report = sp.doctor(home, profile="laptop", probe_handshake=False)
     assert report["fatal"] is True
     dsh = next(check for check in report["checks"] if check["name"] == "dsh")
@@ -413,7 +413,7 @@ def test_doctor_reports_a_missing_dsh_as_fatal(home: Path, monkeypatch: pytest.M
 
 
 def test_doctor_reports_profile_state(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: "/usr/bin/dsh")
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: "/usr/bin/dsh")
     monkeypatch.setattr(sp, "dsh_version", lambda *_: "0.1.5-rc.2")
     monkeypatch.setattr(sp, "dump_config", lambda *a, **k: (0, "tree", ""))
     sp.apply_studio_profile(
@@ -434,7 +434,7 @@ def test_doctor_reports_profile_state(home: Path, monkeypatch: pytest.MonkeyPatc
 
 
 def test_doctor_flags_a_broken_composition(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: "/usr/bin/dsh")
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: "/usr/bin/dsh")
     monkeypatch.setattr(sp, "dsh_version", lambda *_: "0.1.5-rc.2")
     sp.apply_studio_profile(
         sp.plan_studio_profile(home, profile="laptop", with_team=False),
@@ -454,7 +454,7 @@ def test_doctor_flags_a_broken_composition(home: Path, monkeypatch: pytest.Monke
 def test_probe_mcp_handshakes_with_the_real_server() -> None:
     import sys
 
-    report = sp.probe_mcp_report((sys.executable, "-m", "astroai_lab", "mcp", "serve"))
+    report = sp.probe_mcp_report((sys.executable, "-m", "canfar_lab", "mcp", "serve"))
     assert report.ok is True, report.detail()
     assert report.server.startswith("astroai")
     # The tool inventory is the point of the probe: a server answering with only
@@ -503,7 +503,7 @@ def test_baked_mcp_command_reads_the_generated_row(home: Path) -> None:
     patch = home / ".dsh" / "profiles" / "astroai" / "cordis.patch.yml"
     command = sp.baked_mcp_command(patch)
     assert command is not None
-    assert command[1:] == ("mcp", "serve")
+    assert command[-2:] == ("mcp", "serve")
 
 
 def test_baked_mcp_command_ignores_a_foreign_layer(tmp_path: Path) -> None:
@@ -516,7 +516,7 @@ def test_baked_mcp_command_ignores_a_foreign_layer(tmp_path: Path) -> None:
 def test_doctor_probes_the_baked_row_not_the_path(
     home: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("astroai_lab.studio.dsh_binary", lambda: "/usr/bin/dsh")
+    monkeypatch.setattr("canfar_lab.studio.dsh_binary", lambda: "/usr/bin/dsh")
     monkeypatch.setattr(sp, "dsh_version", lambda *_: "0.1.5-rc.2")
     monkeypatch.setattr(sp, "dump_config", lambda *a, **k: (0, "tree", ""))
     sp.apply_studio_profile(

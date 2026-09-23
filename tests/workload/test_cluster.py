@@ -53,30 +53,30 @@ sys.modules.setdefault("canfar.models.config", _canfar_config)
 sys.modules.setdefault("canfar.sessions", _canfar_sessions)
 sys.modules.setdefault("ray", MagicMock(__version__="2.56.1"))
 
-from astroai_workload.canfar_ops import (  # noqa: E402
+from canfar_workload.canfar_ops import (  # noqa: E402
     CanfarOps,
     parse_probe_logs,
 )
-from astroai_workload.cluster import (  # noqa: E402
+from canfar_workload.cluster import (  # noqa: E402
     ClusterCreateRequest,
     clean_orphaned_workers,
     gc_terminal_cluster_workers,
     stop_cluster,
     validate_cluster_create,
 )
-from astroai_workload.reconcile import (  # noqa: E402
+from canfar_workload.reconcile import (  # noqa: E402
     ORPHAN_MISS_THRESHOLD,
     _apply_canfar_phase,
     _refresh_cluster_phase,
     reconcile_cluster,
 )
-from astroai_workload.settings import ManagerSettings  # noqa: E402
-from astroai_workload.state_store import (  # noqa: E402
+from canfar_workload.settings import ManagerSettings  # noqa: E402
+from canfar_workload.state_store import (  # noqa: E402
     ClusterState,
     StateStore,
     WorkerRecord,
 )
-from astroai_workload.workers import (  # noqa: E402
+from canfar_workload.workers import (  # noqa: E402
     build_worker_env,
     destroy_all_workers,
     destroy_worker,
@@ -153,8 +153,8 @@ class TestCanfarOpsCreateHeadless:
     def test_success_single_replica(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ops = CanfarOps()
         with (
-            patch("astroai_workload.canfar_ops._registry_configured", return_value=True),
-            patch("astroai_workload.canfar_ops._registry_env", return_value={}),
+            patch("canfar_workload.canfar_ops._registry_configured", return_value=True),
+            patch("canfar_workload.canfar_ops._registry_env", return_value={}),
             patch.object(ops, "_fresh_session") as mock_new,
         ):
             mock_sess = MagicMock()
@@ -170,8 +170,8 @@ class TestCanfarOpsCreateHeadless:
     def test_multiple_replicas(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ops = CanfarOps()
         with (
-            patch("astroai_workload.canfar_ops._registry_configured", return_value=True),
-            patch("astroai_workload.canfar_ops._registry_env", return_value={}),
+            patch("canfar_workload.canfar_ops._registry_configured", return_value=True),
+            patch("canfar_workload.canfar_ops._registry_env", return_value={}),
             patch.object(ops, "_fresh_session") as mock_new,
         ):
             mock_sess = MagicMock()
@@ -184,7 +184,7 @@ class TestCanfarOpsCreateHeadless:
     def test_no_registry_credentials(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ops = CanfarOps()
         with (
-            patch("astroai_workload.canfar_ops._registry_configured", return_value=False),
+            patch("canfar_workload.canfar_ops._registry_configured", return_value=False),
             pytest.raises(RuntimeError, match="Harbor registry credentials"),
         ):
             ops.create_headless(name="x", image="img")
@@ -192,8 +192,8 @@ class TestCanfarOpsCreateHeadless:
     def test_create_empty_recovers_via_name_probe(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ops = CanfarOps()
         with (
-            patch("astroai_workload.canfar_ops._registry_configured", return_value=True),
-            patch("astroai_workload.canfar_ops._registry_env", return_value={}),
+            patch("canfar_workload.canfar_ops._registry_configured", return_value=True),
+            patch("canfar_workload.canfar_ops._registry_env", return_value={}),
             patch.object(ops, "_fresh_session") as mock_new,
             patch.object(ops, "_resolve_ids_by_name", return_value=["recovered-sid"]) as probe,
         ):
@@ -253,7 +253,7 @@ class TestCanfarOpsCreateHeadless:
 # ===============================================================
 class TestBuildWorkerEnv:
     def test_basic_env(self, settings: ManagerSettings, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("astroai_workload.workers.manager_pod_ip", lambda: "10.0.0.1")
+        monkeypatch.setattr("canfar_workload.workers.manager_pod_ip", lambda: "10.0.0.1")
         env = build_worker_env(settings, "/arc/home/u/heartbeat")
         assert env["RAY_CLUSTER_ID"] == "testcid"
         assert env["RAY_HEAD_IP"] == "10.0.0.1"
@@ -274,7 +274,7 @@ class TestDestroyWorker:
                 workers=[WorkerRecord(session_id="w1", name="ray-w-1", phase="Ray Healthy")],
             )
         )
-        with patch("astroai_workload.workers.archive_session_logs"):
+        with patch("canfar_workload.workers.archive_session_logs"):
             result = destroy_worker(canfar=canfar, store=store, session_id="w1")
         assert result["destroyed"] is True
         state = store.load()
@@ -296,8 +296,8 @@ class TestDestroyAllWorkers:
             )
         )
         with (
-            patch("astroai_workload.workers.archive_session_logs"),
-            patch("astroai_workload.workers.destroy_worker", wraps=destroy_worker),
+            patch("canfar_workload.workers.archive_session_logs"),
+            patch("canfar_workload.workers.destroy_worker", wraps=destroy_worker),
         ):
             results = destroy_all_workers(canfar=canfar, store=store)
         destroyed_ids = {r["session_id"] for r in results}
@@ -381,16 +381,16 @@ class TestReconcileCluster:
                 ],
             )
         )
-        monkeypatch.setattr("astroai_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
-        monkeypatch.setattr("astroai_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
-        monkeypatch.setattr("astroai_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
+        monkeypatch.setattr("canfar_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
+        monkeypatch.setattr("canfar_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
+        monkeypatch.setattr("canfar_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
         monkeypatch.setattr(
-            "astroai_workload.reconcile.live_worker_node_ips", lambda *a, **k: {"10.0.0.5"}
+            "canfar_workload.reconcile.live_worker_node_ips", lambda *a, **k: {"10.0.0.5"}
         )
         monkeypatch.setattr(
-            "astroai_workload.reconcile.node_ip_to_id", lambda *a, **k: {"10.0.0.5": "node-1"}
+            "canfar_workload.reconcile.node_ip_to_id", lambda *a, **k: {"10.0.0.5": "node-1"}
         )
-        with patch("astroai_workload.reconcile.archive_session_logs"):
+        with patch("canfar_workload.reconcile.archive_session_logs"):
             result = reconcile_cluster(canfar=canfar, store=store)
         assert result is not None
         w = result.workers[0]
@@ -422,16 +422,16 @@ class TestReconcileCluster:
                 ],
             )
         )
-        monkeypatch.setattr("astroai_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
-        monkeypatch.setattr("astroai_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
-        monkeypatch.setattr("astroai_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
+        monkeypatch.setattr("canfar_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
+        monkeypatch.setattr("canfar_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
+        monkeypatch.setattr("canfar_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
         monkeypatch.setattr(
-            "astroai_workload.reconcile.live_worker_node_ips", lambda *a, **k: {"10.0.0.5"}
+            "canfar_workload.reconcile.live_worker_node_ips", lambda *a, **k: {"10.0.0.5"}
         )
         monkeypatch.setattr(
-            "astroai_workload.reconcile.node_ip_to_id", lambda *a, **k: {"10.0.0.5": "node-1"}
+            "canfar_workload.reconcile.node_ip_to_id", lambda *a, **k: {"10.0.0.5": "node-1"}
         )
-        with patch("astroai_workload.reconcile.archive_session_logs"):
+        with patch("canfar_workload.reconcile.archive_session_logs"):
             result = reconcile_cluster(canfar=canfar, store=store)
         assert result is not None
         w = result.workers[0]
@@ -459,22 +459,20 @@ class TestReconcileCluster:
                 ],
             )
         )
-        monkeypatch.setattr("astroai_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
-        monkeypatch.setattr("astroai_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
-        monkeypatch.setattr("astroai_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
-        monkeypatch.setattr(
-            "astroai_workload.reconcile.live_worker_node_ips", lambda *a, **k: set()
-        )
-        monkeypatch.setattr("astroai_workload.reconcile.node_ip_to_id", lambda *a, **k: {})
+        monkeypatch.setattr("canfar_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
+        monkeypatch.setattr("canfar_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
+        monkeypatch.setattr("canfar_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
+        monkeypatch.setattr("canfar_workload.reconcile.live_worker_node_ips", lambda *a, **k: set())
+        monkeypatch.setattr("canfar_workload.reconcile.node_ip_to_id", lambda *a, **k: {})
         # Below the threshold: worker survives, miss counter accumulates.
-        with patch("astroai_workload.reconcile.archive_session_logs"):
+        with patch("canfar_workload.reconcile.archive_session_logs"):
             result = reconcile_cluster(canfar=canfar, store=store)
         assert result is not None
         assert result.workers[0].phase != "Orphaned"
         assert result.workers[0].orphan_misses == 1
         # Reach the threshold across more reconciles.
         for _ in range(ORPHAN_MISS_THRESHOLD - 1):
-            with patch("astroai_workload.reconcile.archive_session_logs"):
+            with patch("canfar_workload.reconcile.archive_session_logs"):
                 result = reconcile_cluster(canfar=canfar, store=store)
         assert result is not None
         w = result.workers[0]
@@ -501,15 +499,13 @@ class TestReconcileCluster:
                 ],
             )
         )
-        monkeypatch.setattr("astroai_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
-        monkeypatch.setattr("astroai_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
-        monkeypatch.setattr("astroai_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
-        monkeypatch.setattr(
-            "astroai_workload.reconcile.live_worker_node_ips", lambda *a, **k: set()
-        )
-        monkeypatch.setattr("astroai_workload.reconcile.node_ip_to_id", lambda *a, **k: {})
+        monkeypatch.setattr("canfar_workload.reconcile.manager_pod_ip", lambda: "10.0.0.1")
+        monkeypatch.setattr("canfar_workload.reconcile.ray_address", lambda: "10.0.0.1:6379")
+        monkeypatch.setattr("canfar_workload.reconcile.list_ray_nodes", lambda *a, **k: [])
+        monkeypatch.setattr("canfar_workload.reconcile.live_worker_node_ips", lambda *a, **k: set())
+        monkeypatch.setattr("canfar_workload.reconcile.node_ip_to_id", lambda *a, **k: {})
         canfar.session_info.return_value = {"status": "Running"}
-        with patch("astroai_workload.reconcile.archive_session_logs"):
+        with patch("canfar_workload.reconcile.archive_session_logs"):
             result = reconcile_cluster(canfar=canfar, store=store)
         assert result is not None
         w = result.workers[0]
@@ -576,8 +572,8 @@ class TestStopCluster:
             )
         )
         with (
-            patch("astroai_workload.cluster.archive_session_logs"),
-            patch("astroai_workload.cluster.reconcile_cluster") as mock_reconcile,
+            patch("canfar_workload.cluster.archive_session_logs"),
+            patch("canfar_workload.cluster.reconcile_cluster") as mock_reconcile,
         ):
 
             def reconcile_side(canfar=None, store=None, state=None, nodes=None):
@@ -646,7 +642,7 @@ class TestGcTerminalClusterWorkers:
         canfar = MagicMock()
         canfar.list_headless_sessions.return_value = []
         canfar.destroy.return_value = True
-        with patch("astroai_workload.cluster.reconcile_cluster", return_value=None):
+        with patch("canfar_workload.cluster.reconcile_cluster", return_value=None):
             result = gc_terminal_cluster_workers(settings=settings, canfar=canfar, store=store)
         assert result is None
 
@@ -670,7 +666,7 @@ class TestClusterStartAutoscaling:
     def test_writes_env_and_creates_manager(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from astroai_workload.cli import cluster_start_payload
+        from canfar_workload.cli import cluster_start_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
         created: dict = {}
@@ -684,13 +680,13 @@ class TestClusterStartAutoscaling:
                 return None
 
         client = _FakeManagerClient()
-        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr("canfar_workload.canfar_ops.CanfarOps", _Ops)
         monkeypatch.setattr(
-            "astroai_workload.dashboard.resolve_dashboard_url",
+            "canfar_workload.dashboard.resolve_dashboard_url",
             lambda: "https://mgr/dashboard",
         )
-        monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
-        monkeypatch.setattr("astroai_workload.cli._manager_client", lambda base: client)
+        monkeypatch.setattr("canfar_workload.dashboard.persist_connect_url", lambda *a, **k: None)
+        monkeypatch.setattr("canfar_workload.cli._manager_client", lambda base: client)
 
         result = cluster_start_payload(max_workers=8, min_workers=2)
         assert result["autoscaling"] is True
@@ -705,8 +701,8 @@ class TestClusterStartAutoscaling:
     def test_existing_manager_hints_restart(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from astroai_workload.autoscaler import write_manager_autoscaling_env
-        from astroai_workload.cli import cluster_start_payload
+        from canfar_workload.autoscaler import write_manager_autoscaling_env
+        from canfar_workload.cli import cluster_start_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
         # Same shape as cluster_start_payload defaults → no recycle.
@@ -725,14 +721,14 @@ class TestClusterStartAutoscaling:
             def destroy(self, session_id: str) -> bool:
                 raise AssertionError("must not destroy when env unchanged")
 
-        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr("canfar_workload.canfar_ops.CanfarOps", _Ops)
         monkeypatch.setattr(
-            "astroai_workload.dashboard.resolve_dashboard_url",
+            "canfar_workload.dashboard.resolve_dashboard_url",
             lambda: "https://mgr/dashboard",
         )
-        monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
+        monkeypatch.setattr("canfar_workload.dashboard.persist_connect_url", lambda *a, **k: None)
         monkeypatch.setattr(
-            "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
+            "canfar_workload.cli._manager_client", lambda base: _FakeManagerClient()
         )
 
         result = cluster_start_payload()
@@ -743,7 +739,7 @@ class TestClusterStartAutoscaling:
     def test_existing_manager_recycles_when_no_previous_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from astroai_workload.cli import cluster_start_payload
+        from canfar_workload.cli import cluster_start_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
         # No ray-manager.env yet → cannot verify live shape → recycle.
@@ -765,15 +761,15 @@ class TestClusterStartAutoscaling:
                 destroyed.append(session_id)
                 return True
 
-        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr("canfar_workload.canfar_ops.CanfarOps", _Ops)
         monkeypatch.setattr(
-            "astroai_workload.dashboard.resolve_dashboard_url",
+            "canfar_workload.dashboard.resolve_dashboard_url",
             lambda: "https://mgr/dashboard",
         )
-        monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
-        monkeypatch.setattr("astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
+        monkeypatch.setattr("canfar_workload.dashboard.persist_connect_url", lambda *a, **k: None)
+        monkeypatch.setattr("canfar_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
         monkeypatch.setattr(
-            "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
+            "canfar_workload.cli._manager_client", lambda base: _FakeManagerClient()
         )
 
         result = cluster_start_payload(max_workers=2)
@@ -784,8 +780,8 @@ class TestClusterStartAutoscaling:
     def test_existing_manager_recycles_when_env_changes(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from astroai_workload.autoscaler import write_manager_autoscaling_env
-        from astroai_workload.cli import cluster_start_payload
+        from canfar_workload.autoscaler import write_manager_autoscaling_env
+        from canfar_workload.cli import cluster_start_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
         write_manager_autoscaling_env(min_workers=1, max_workers=4, cores=8, ram_gb=64, gpus=0)
@@ -807,15 +803,15 @@ class TestClusterStartAutoscaling:
                 destroyed.append(session_id)
                 return True
 
-        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr("canfar_workload.canfar_ops.CanfarOps", _Ops)
         monkeypatch.setattr(
-            "astroai_workload.dashboard.resolve_dashboard_url",
+            "canfar_workload.dashboard.resolve_dashboard_url",
             lambda: "https://mgr/dashboard",
         )
-        monkeypatch.setattr("astroai_workload.dashboard.persist_connect_url", lambda *a, **k: None)
-        monkeypatch.setattr("astroai_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
+        monkeypatch.setattr("canfar_workload.dashboard.persist_connect_url", lambda *a, **k: None)
+        monkeypatch.setattr("canfar_workload.dashboard.clear_persisted_connect_urls", lambda: 0)
         monkeypatch.setattr(
-            "astroai_workload.cli._manager_client", lambda base: _FakeManagerClient()
+            "canfar_workload.cli._manager_client", lambda base: _FakeManagerClient()
         )
 
         result = cluster_start_payload(max_workers=2, min_workers=0, cores=4, ram=32)
@@ -836,7 +832,7 @@ class TestClusterStopTeardown:
     def test_destroys_workers_manager_and_state(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from astroai_workload.cli import cluster_stop_payload
+        from canfar_workload.cli import cluster_stop_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
         url_file = self._write_connect_url(tmp_path)
@@ -857,8 +853,8 @@ class TestClusterStopTeardown:
                 return None
 
         client = _FakeManagerClient()
-        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
-        monkeypatch.setattr("astroai_workload.cli._manager_client", lambda addr=None: client)
+        monkeypatch.setattr("canfar_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr("canfar_workload.cli._manager_client", lambda addr=None: client)
 
         result = cluster_stop_payload()
         assert result["stopped_cluster"] is True
@@ -872,7 +868,7 @@ class TestClusterStopTeardown:
     def test_reports_already_down_when_no_manager(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from astroai_workload.cli import cluster_stop_payload
+        from canfar_workload.cli import cluster_stop_payload
 
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -883,8 +879,8 @@ class TestClusterStopTeardown:
         def _no_manager(addr=None):
             raise RuntimeError("No ray-manager found")
 
-        monkeypatch.setattr("astroai_workload.canfar_ops.CanfarOps", _Ops)
-        monkeypatch.setattr("astroai_workload.cli._manager_client", _no_manager)
+        monkeypatch.setattr("canfar_workload.canfar_ops.CanfarOps", _Ops)
+        monkeypatch.setattr("canfar_workload.cli._manager_client", _no_manager)
 
         result = cluster_stop_payload()
         assert result["manager_found"] is False

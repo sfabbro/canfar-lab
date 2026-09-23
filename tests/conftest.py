@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.config.settings import get_settings
+from canfar_lab.config.settings import get_settings
 
 CANFAR_SKILLS_SRC = (
     Path("/data/src/canfar-skills")
@@ -18,7 +18,7 @@ def mock_canfar_skills_upstream(monkeypatch: pytest.MonkeyPatch) -> None:
     """Use local canfar-skills tree or test fixtures instead of GitHub."""
     import shutil
 
-    from astroai_lab.agent import addons as addons_mod
+    from canfar_lab.agent import addons as addons_mod
 
     def _fake_refresh(cache_root: Path, repo: str, paths):  # noqa: ANN001
         if repo != "astroai/canfar-skills":
@@ -46,7 +46,7 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     # Clear any host environment variables that might pollute tests
     keys_to_remove = []
     for key in os.environ:
-        if key.startswith("ASTROAI_LAB_") or key in (
+        if key.startswith("CANFAR_LAB_") or key in (
             "UV_CACHE_DIR",
             "PIP_CACHE_DIR",
             "PIXI_CACHE_DIR",
@@ -64,7 +64,7 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(key, raising=False)
 
     # Version probes can hang on some installed CLIs; keep unit tests offline.
-    monkeypatch.setenv("ASTROAI_LAB_PROBE_VERSION", "0")
+    monkeypatch.setenv("CANFAR_LAB_PROBE_VERSION", "0")
 
     # get_settings() caches a pydantic model that snapshots env vars at first
     # call; clear it so a previous test's monkeypatched WORK/SCRATCH cannot

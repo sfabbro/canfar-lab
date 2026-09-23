@@ -12,7 +12,7 @@ Two personas, exercised for each installable id:
 
 No network downloads in the default suite — installers are mocked so CI stays
 fast and offline-safe. Live URL reachability lives in a separate optional
-test gated on ``ASTROAI_LAB_NETWORK_TESTS=1``.
+test gated on ``CANFAR_LAB_NETWORK_TESTS=1``.
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from astroai_lab.agent import install as install_mod
-from astroai_lab.agent.registry import (
+from canfar_lab.agent import install as install_mod
+from canfar_lab.agent.registry import (
     fix_registry_agent,
     get_registry_agent,
     install_registry_agent,
@@ -60,8 +60,8 @@ def _session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pat
 
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("SCRATCH", str(scratch))
-    monkeypatch.setenv("ASTROAI_LAB_BIN_DIR", str(bin_dir))
-    monkeypatch.setenv("ASTROAI_LAB_NPM_PREFIX", str(npm_prefix))
+    monkeypatch.setenv("CANFAR_LAB_BIN_DIR", str(bin_dir))
+    monkeypatch.setenv("CANFAR_LAB_NPM_PREFIX", str(npm_prefix))
     monkeypatch.setattr(install_mod, "_bin_dir", lambda: bin_dir)
     monkeypatch.setattr(install_mod, "_npm_prefix", lambda: npm_prefix)
 
@@ -77,12 +77,12 @@ def _session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pat
     monkeypatch.setattr(install_mod.shutil, "which", _which)
 
     session = SimpleNamespace(
-        astroai_lab_bin_dir=bin_dir,
-        astroai_lab_npm_prefix=npm_prefix,
+        canfar_lab_bin_dir=bin_dir,
+        canfar_lab_npm_prefix=npm_prefix,
     )
     session.exports = lambda: {
-        "ASTROAI_LAB_BIN_DIR": str(bin_dir),
-        "ASTROAI_LAB_NPM_PREFIX": str(npm_prefix),
+        "CANFAR_LAB_BIN_DIR": str(bin_dir),
+        "CANFAR_LAB_NPM_PREFIX": str(npm_prefix),
         "PATH": f"{bin_dir}:{npm_prefix / 'bin'}",
     }
     monkeypatch.setattr(install_mod, "resolve_session_env", lambda ensure=False: session)
@@ -111,7 +111,7 @@ def _config_rel(agent: dict) -> str | None:
 
 def _no_plugins(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_agent_plugins",
+        "canfar_lab.agent.plugins.apply_agent_plugins",
         lambda *a, **k: [],
     )
 
@@ -148,7 +148,7 @@ def test_every_registry_agent_schema(agent_id: str) -> None:
 
 
 def test_registry_covers_every_yaml_on_disk() -> None:
-    from astroai_lab.agent.bundle_path import bundle_root
+    from canfar_lab.agent.bundle_path import bundle_root
 
     on_disk = {p.stem for p in (bundle_root() / "agents").glob("*.yaml")}
     assert on_disk == set(REGISTRY_IDS)
@@ -178,7 +178,7 @@ def test_new_user_setup_scaffolds_without_clobber(
     home, _, _ = _session(tmp_path, monkeypatch)
     # Bundles merge MCP into configs — stub merges so we only test scaffold/clobber.
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.run_bundle",
+        "canfar_lab.agent.setup.run_bundle",
         lambda *a, **k: None,
     )
     agent = get_registry_agent(agent_id)
@@ -262,14 +262,14 @@ def test_new_user_mocked_install_lands_managed_binary(
         monkeypatch.setattr(install_mod, "install_tool", _tool)
         monkeypatch.setattr(install_mod, "refuse_if_home_owned", lambda *a, **k: None)
     else:
-        monkeypatch.setattr("astroai_lab.agent.registry._install_npm", _land)
-        monkeypatch.setattr("astroai_lab.agent.registry._install_curl", _land)
-        monkeypatch.setattr("astroai_lab.agent.registry._install_uv_tool", _land)
-        monkeypatch.setattr("astroai_lab.agent.registry._install_gh_release", _land)
+        monkeypatch.setattr("canfar_lab.agent.registry._install_npm", _land)
+        monkeypatch.setattr("canfar_lab.agent.registry._install_curl", _land)
+        monkeypatch.setattr("canfar_lab.agent.registry._install_uv_tool", _land)
+        monkeypatch.setattr("canfar_lab.agent.registry._install_gh_release", _land)
 
     # Skip post-install setup network/plugins.
     monkeypatch.setattr(
-        "astroai_lab.agent.registry.setup_registry_agent",
+        "canfar_lab.agent.registry.setup_registry_agent",
         lambda *a, **k: {"ok": True, "errors": [], "actions": [], "agent": agent_id},
     )
 
@@ -290,7 +290,7 @@ def test_new_user_mocked_install_lands_managed_binary(
 def test_dirty_home_refuses_install_until_clean(
     agent_id: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.errors import LabError
+    from canfar_lab.errors import LabError
 
     home, bin_dir, _ = _session(tmp_path, monkeypatch)
     agent = get_registry_agent(agent_id)
@@ -344,7 +344,7 @@ def test_dirty_broken_config_is_repaired(
     text = cfg.read_text(encoding="utf-8")
     assert text != junk
     # Must parse again.
-    from astroai_lab.agent import agent_config as ac
+    from canfar_lab.agent import agent_config as ac
 
     ac.validate_config_text(agent_id, text, home=home)
 
@@ -373,19 +373,19 @@ def test_dispatch_npm_curl_gh_uv(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     hits: dict[str, str] = {}
 
     monkeypatch.setattr(
-        "astroai_lab.agent.registry._install_npm",
+        "canfar_lab.agent.registry._install_npm",
         lambda agent: hits.setdefault("npm", agent["id"]) or agent["id"],
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.registry._install_curl",
+        "canfar_lab.agent.registry._install_curl",
         lambda agent: hits.setdefault("curl", agent["id"]) or agent["id"],
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.registry._install_gh_release",
+        "canfar_lab.agent.registry._install_gh_release",
         lambda agent: hits.setdefault("gh-release", agent["id"]) or agent["id"],
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.registry._install_uv_tool",
+        "canfar_lab.agent.registry._install_uv_tool",
         lambda agent: hits.setdefault("uv-tool", agent["id"]) or agent["id"],
     )
     # Avoid TOOLS short-circuit for overlapped ids by clearing TOOLS.
@@ -448,7 +448,7 @@ def test_codex_package_install_puts_host_and_bwrap_on_path(
                     tf.add(path, arcname=str(path.relative_to(pkg)))
 
     monkeypatch.setattr(install_mod, "_download_public_gh_release", fake_curl)
-    from astroai_lab.agent.registry import _install_gh_release
+    from canfar_lab.agent.registry import _install_gh_release
 
     agent = get_registry_agent("codex")
     assert agent is not None
@@ -482,8 +482,8 @@ def test_codex_fix_adds_mcp_timeouts_for_legacy_config(
 
 
 @pytest.mark.skipif(
-    os.environ.get("ASTROAI_LAB_NETWORK_TESTS") != "1",
-    reason="set ASTROAI_LAB_NETWORK_TESTS=1 to hit real installer URLs",
+    os.environ.get("CANFAR_LAB_NETWORK_TESTS") != "1",
+    reason="set CANFAR_LAB_NETWORK_TESTS=1 to hit real installer URLs",
 )
 @pytest.mark.parametrize(
     "agent_id",

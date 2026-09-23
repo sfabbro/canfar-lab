@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.wipe import wipe_agent_state
-from astroai_lab.cli.main import app
+from canfar_lab.agent.wipe import wipe_agent_state
+from canfar_lab.cli.main import app
 
 runner = CliRunner()
 
@@ -25,10 +25,10 @@ def _fake_session_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tupl
     npm_prefix = tmp_path / "npm"
     bin_dir.mkdir(parents=True, exist_ok=True)
     (npm_prefix / "bin").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr("astroai_lab.agent.install._bin_dir", lambda: bin_dir)
-    monkeypatch.setattr("astroai_lab.agent.install._npm_prefix", lambda: npm_prefix)
-    monkeypatch.setattr("astroai_lab.agent.install.shutil.which", lambda _: None)
-    monkeypatch.setattr("astroai_lab.agent.install.run", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install._bin_dir", lambda: bin_dir)
+    monkeypatch.setattr("canfar_lab.agent.install._npm_prefix", lambda: npm_prefix)
+    monkeypatch.setattr("canfar_lab.agent.install.shutil.which", lambda _: None)
+    monkeypatch.setattr("canfar_lab.agent.install.run", lambda *a, **k: None)
     return bin_dir, npm_prefix
 
 
@@ -146,7 +146,7 @@ def test_wipe_keeps_saved_environments(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_wipe_unknown_agent_error_captured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A registry entry that fails to remove is captured, not fatal."""
-    from astroai_lab.agent import registry as registry_mod
+    from canfar_lab.agent import registry as registry_mod
 
     _fake_session_paths(monkeypatch, tmp_path)
     home = tmp_path / "home"
@@ -158,7 +158,7 @@ def test_wipe_unknown_agent_error_captured(tmp_path: Path, monkeypatch: pytest.M
     )
 
     def boom(agent_id, *, home=None, purge=False, clean_home=False, dry_run=False):
-        from astroai_lab.errors import LabError
+        from canfar_lab.errors import LabError
 
         if agent_id == "boom":
             raise LabError("boom failed")

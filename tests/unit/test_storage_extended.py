@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from astroai_lab.core.storage import (
+from canfar_lab.core.storage import (
     ArcProjectInfo,
     QuotaLine,
     arc_project_statuses,
@@ -14,7 +14,7 @@ from astroai_lab.core.storage import (
     home_breakdown,
     top_cpu_processes,
 )
-from astroai_lab.errors import LabError
+from canfar_lab.errors import LabError
 
 
 def test_df_line(tmp_path: Path) -> None:
@@ -58,13 +58,13 @@ def test_dir_size_prefers_ceph_rbytes(tmp_path: Path, monkeypatch) -> None:
         raise OSError("missing")
 
     monkeypatch.setattr("os.getxattr", fake_getxattr, raising=False)
-    with patch("astroai_lab.core.storage._du_bytes") as du:
+    with patch("canfar_lab.core.storage._du_bytes") as du:
         assert dir_size(d) == 999
         du.assert_not_called()
 
 
 def test_dir_bytes_does_not_retry_du_after_timeout(tmp_path: Path) -> None:
-    from astroai_lab.core.storage import dir_bytes
+    from canfar_lab.core.storage import dir_bytes
 
     d = tmp_path / "d"
     d.mkdir()
@@ -74,7 +74,7 @@ def test_dir_bytes_does_not_retry_du_after_timeout(tmp_path: Path) -> None:
         calls.append(cmd)
         raise LabError("Command timed out after 2.0s: du -sb")
 
-    with patch("astroai_lab.utils.subprocess.run_capture", side_effect=_du):
+    with patch("canfar_lab.utils.subprocess.run_capture", side_effect=_du):
         assert dir_bytes(d, timeout_sec=2.0) is None
     assert calls == [["du", "-sb", str(d)]]
 
@@ -88,13 +88,13 @@ def test_home_breakdown(tmp_path: Path) -> None:
 
 
 def test_top_cpu_processes() -> None:
-    with patch("astroai_lab.utils.subprocess.run_capture", return_value="USER PID\nproc1\nproc2"):
+    with patch("canfar_lab.utils.subprocess.run_capture", return_value="USER PID\nproc1\nproc2"):
         procs = top_cpu_processes(limit=1)
     assert len(procs) == 1
 
 
 def test_top_cpu_processes_on_error() -> None:
-    with patch("astroai_lab.utils.subprocess.run_capture", side_effect=LabError("fail")):
+    with patch("canfar_lab.utils.subprocess.run_capture", side_effect=LabError("fail")):
         assert top_cpu_processes() == []
 
 
@@ -103,12 +103,12 @@ def test_arc_project_statuses_marks_cwd() -> None:
     bar = Path("/arc/projects/bar")
     q = QuotaLine(label="foo", path=str(foo), used="1G", total="10G", free="9G", pct=10)
     with (
-        patch("astroai_lab.core.storage.find_arc_project_root", return_value=foo),
-        patch("astroai_lab.core.storage.list_arc_projects", return_value=[bar, foo]),
-        patch("astroai_lab.core.storage.df_line", return_value=q) as mock_df,
-        patch("astroai_lab.core.storage.read_acl_groups", return_value=[]),
-        patch("astroai_lab.core.storage.project_access", return_value="rw"),
-        patch("astroai_lab.core.storage.list_gms_groups", return_value=None),
+        patch("canfar_lab.core.storage.find_arc_project_root", return_value=foo),
+        patch("canfar_lab.core.storage.list_arc_projects", return_value=[bar, foo]),
+        patch("canfar_lab.core.storage.df_line", return_value=q) as mock_df,
+        patch("canfar_lab.core.storage.read_acl_groups", return_value=[]),
+        patch("canfar_lab.core.storage.project_access", return_value="rw"),
+        patch("canfar_lab.core.storage.list_gms_groups", return_value=None),
     ):
         active, rows, gms, vault = arc_project_statuses(gms=False, vault=False)
     assert gms is None
@@ -129,8 +129,8 @@ def test_collect_status_quotas_includes_home_and_scratch(tmp_path: Path) -> None
     scratch.mkdir()
     q = QuotaLine(label="x", path="p", used="1", total="2", free="1", pct=50)
     with (
-        patch("astroai_lab.core.storage.df_line", return_value=q),
-        patch("astroai_lab.core.storage.arc_project_statuses", return_value=(None, [], None, None)),
+        patch("canfar_lab.core.storage.df_line", return_value=q),
+        patch("canfar_lab.core.storage.arc_project_statuses", return_value=(None, [], None, None)),
     ):
         rows = collect_status_quotas(home=home, scratch=scratch)
     assert len(rows) == 2
@@ -146,8 +146,8 @@ def test_collect_status_quotas_reuses_projects(tmp_path: Path) -> None:
     )
     proj = ArcProjectInfo(name="team", path=tmp_path / "team", quota=proj_q, is_cwd=False)
     with (
-        patch("astroai_lab.core.storage.df_line", return_value=proj_q),
-        patch("astroai_lab.core.storage.arc_project_statuses") as mock_arc,
+        patch("canfar_lab.core.storage.df_line", return_value=proj_q),
+        patch("canfar_lab.core.storage.arc_project_statuses") as mock_arc,
     ):
         rows = collect_status_quotas(home=home, scratch=scratch, projects=[proj])
     mock_arc.assert_not_called()
@@ -158,11 +158,11 @@ def test_cwd_arc_project_skips_listing() -> None:
     foo = Path("/arc/projects/foo")
     q = QuotaLine(label="foo", path=str(foo), used="1G", total="10G", free="9G", pct=10)
     with (
-        patch("astroai_lab.core.storage.find_arc_project_root", return_value=foo),
-        patch("astroai_lab.core.storage.list_arc_projects") as mock_list,
-        patch("astroai_lab.core.storage.df_line", return_value=q),
-        patch("astroai_lab.core.storage.read_acl_groups", return_value=[]),
-        patch("astroai_lab.core.storage.project_access", return_value="rw"),
+        patch("canfar_lab.core.storage.find_arc_project_root", return_value=foo),
+        patch("canfar_lab.core.storage.list_arc_projects") as mock_list,
+        patch("canfar_lab.core.storage.df_line", return_value=q),
+        patch("canfar_lab.core.storage.read_acl_groups", return_value=[]),
+        patch("canfar_lab.core.storage.project_access", return_value="rw"),
     ):
         info = cwd_arc_project()
     mock_list.assert_not_called()

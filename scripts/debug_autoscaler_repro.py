@@ -37,16 +37,16 @@ _src = Path(__file__).resolve().parents[1] / "src"
 if _src.is_dir():
     sys.path.insert(0, str(_src))
 
-from astroai_workload import canfar_ops as cops  # noqa: E402
-from astroai_workload import cli  # noqa: E402
-from astroai_workload import dashboard as dash  # noqa: E402
-from astroai_workload.autoscaler import (  # noqa: E402
+from canfar_workload import canfar_ops as cops  # noqa: E402
+from canfar_workload import cli  # noqa: E402
+from canfar_workload import dashboard as dash  # noqa: E402
+from canfar_workload.autoscaler import (  # noqa: E402
     CanfarNodeProvider,
     _session_age_seconds,
     write_manager_autoscaling_env,
 )
-from astroai_workload.cli import cluster_start_payload  # noqa: E402
-from astroai_workload.dashboard import _probe_manager_url  # noqa: E402
+from canfar_workload.cli import cluster_start_payload  # noqa: E402
+from canfar_workload.dashboard import _probe_manager_url  # noqa: E402
 
 
 def _provider(**cfg):

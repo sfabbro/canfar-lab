@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.disk_usage import DiskUsage, disk_usage, quota_used_pct, used_pct
-from astroai_lab.core.session_resources import collect_resources
+from canfar_lab.core.disk_usage import DiskUsage, disk_usage, quota_used_pct, used_pct
+from canfar_lab.core.session_resources import collect_resources
 
 
 def test_quota_used_pct_statvfs(tmp_path: Path) -> None:
@@ -72,7 +72,7 @@ def test_used_pct_rounds_half_up() -> None:
 
 
 def test_ceph_usage_does_not_inherit_arc_parent_quota(monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.core.disk_usage import _ceph_dir_usage
+    from canfar_lab.core.disk_usage import _ceph_dir_usage
 
     def fake_getxattr(path: str | bytes, name: str | bytes) -> bytes:
         key = name.decode() if isinstance(name, bytes) else name
@@ -94,5 +94,5 @@ def test_disk_usage_skips_statvfs_on_arc_home(
 ) -> None:
     home = tmp_path / "home"
     home.mkdir()
-    monkeypatch.setattr("astroai_lab.core.disk_usage._arc_home_tree", lambda _p: True)
+    monkeypatch.setattr("canfar_lab.core.disk_usage._arc_home_tree", lambda _p: True)
     assert disk_usage(home) is None

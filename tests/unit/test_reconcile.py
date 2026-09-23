@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.agent import reconcile
-from astroai_lab.agent.reconcile import (
+from canfar_lab.agent import reconcile
+from canfar_lab.agent.reconcile import (
     drift_issues,
     is_managed_skill_dir,
     packaged_skill_names,
@@ -77,7 +77,7 @@ def test_reconcile_mcp_paths_rewrites_missing_binary_to_path(
     import json
     import os
 
-    from astroai_lab.agent.agent_targets import MCP_TARGETS
+    from canfar_lab.agent.agent_targets import MCP_TARGETS
 
     assert MCP_TARGETS["cursor"].relpath == ".cursor/mcp.json"
     mcp = home / ".cursor" / "mcp.json"

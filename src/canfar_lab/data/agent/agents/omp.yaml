@@ -1,0 +1,29 @@
+# Oh My Pi (omp) — fork of Pi coding agent with sessions/subagents/slash commands.
+# Prefer the official binary installer (no bun runtime). npm/bun wrappers shebang to bun.
+id: omp
+name: Oh My Pi
+homepage: https://github.com/can1357/oh-my-pi
+summary: Coding agent CLI (omp) — sessions, subagents, slash commands; fork of Pi
+binary: omp
+tags: [agent, cli, open]
+install:
+  method: curl
+  source: https://omp.sh/install
+  args: ["--binary"]
+  env:
+    PI_INSTALL_DIR: "{bin_dir}"
+  post_binary_paths:
+    - ~/.local/bin/omp
+config:
+  path: "~/.config/omp/astroai-notes.md"
+  format: markdown
+  provider_key: OPENROUTER_API_KEY
+  markers:
+    - "~/.omp"
+    - "~/.omp/agent"
+    - "~/.omp/natives"
+    - "~/.omp/puppeteer"
+verify:
+  - "omp --version"
+plugins: [skill, mcp, config, addon]
+notes: Binary is `omp`. Installs the prebuilt release into $CANFAR_LAB_BIN_DIR (no bun). Runtime (natives/Chrome/SQLite/sessions) is force-relocated to scratch — never leave it on /arc/home. Distinct from `pi` (earendil-works).

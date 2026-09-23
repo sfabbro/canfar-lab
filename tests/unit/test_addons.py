@@ -7,14 +7,14 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.addons import (
+from canfar_lab.agent.addons import (
     add_addon,
     addon_installed,
     plugin_as_addon,
 )
-from astroai_lab.agent.plugins import get_plugin, load_plugins
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab.agent.plugins import get_plugin, load_plugins
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 

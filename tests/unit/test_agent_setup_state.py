@@ -7,15 +7,15 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.setup_state import (
+from canfar_lab.agent.setup_state import (
     agent_setup_lock,
     build_agent_report,
     read_setup_state,
     record_setup_failed,
     record_setup_ok,
 )
-from astroai_lab.cli.main import app
-from astroai_lab.errors import LabError
+from canfar_lab.cli.main import app
+from canfar_lab.errors import LabError
 
 runner = CliRunner()
 
@@ -40,7 +40,7 @@ def test_agent_setup_lock_contention(tmp_path: Path, monkeypatch: pytest.MonkeyP
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("ASTROAI_LAB_AGENT_LOCK_TIMEOUT", "1")
+    monkeypatch.setenv("CANFAR_LAB_AGENT_LOCK_TIMEOUT", "1")
     held = threading.Event()
     release = threading.Event()
 
@@ -61,12 +61,12 @@ def test_agent_setup_lock_contention(tmp_path: Path, monkeypatch: pytest.MonkeyP
 def test_agent_setup_lock_dead_holder_is_stolen(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent.setup_state import lock_path
+    from canfar_lab.agent.setup_state import lock_path
 
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("ASTROAI_LAB_AGENT_LOCK_TIMEOUT", "1")
+    monkeypatch.setenv("CANFAR_LAB_AGENT_LOCK_TIMEOUT", "1")
     path = lock_path(home)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("999999999 0\n", encoding="utf-8")  # almost-certainly dead PID
@@ -106,7 +106,7 @@ def test_agent_verify_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         lambda *a, **k: {
             "binary": "x",
             "path": None,
@@ -161,22 +161,22 @@ def test_install_timeout_default_raised_for_self_bootstrapping_installers() -> N
     """Self-bootstrapping installers (hermes: uv/python/node + repo clone) need
     far more than the old 300s default — pin the floor (the value verified in
     the container E2E) so it doesn't regress."""
-    import astroai_lab.agent.setup_state as ss
+    import canfar_lab.agent.setup_state as ss
 
     assert ss.INSTALL_TIMEOUT_SEC >= 1500
 
 
 def test_install_timeout_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
-    """ASTROAI_LAB_AGENT_INSTALL_TIMEOUT still overrides the (raised) default."""
+    """CANFAR_LAB_AGENT_INSTALL_TIMEOUT still overrides the (raised) default."""
     import importlib
 
-    import astroai_lab.agent.setup_state as ss
+    import canfar_lab.agent.setup_state as ss
 
-    monkeypatch.setenv("ASTROAI_LAB_AGENT_INSTALL_TIMEOUT", "45")
+    monkeypatch.setenv("CANFAR_LAB_AGENT_INSTALL_TIMEOUT", "45")
     importlib.reload(ss)
     try:
         assert ss.INSTALL_TIMEOUT_SEC == 45
     finally:
-        monkeypatch.delenv("ASTROAI_LAB_AGENT_INSTALL_TIMEOUT")
+        monkeypatch.delenv("CANFAR_LAB_AGENT_INSTALL_TIMEOUT")
         importlib.reload(ss)
         assert ss.INSTALL_TIMEOUT_SEC >= 1500

@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from typer.main import get_command
 
-from astroai_lab.cli.main import app
+from canfar_lab.cli.main import app
 
 
 def _click_command(path: str):
@@ -34,10 +34,10 @@ def _completion_values(param, incomplete: str) -> set[str]:
 
 
 def test_kernel_name_completer_offers_registered_kernels() -> None:
-    from astroai_lab.cli.kernel import _kernel_name_completer
+    from canfar_lab.cli.kernel import _kernel_name_completer
 
     with patch(
-        "astroai_lab.cli.kernel.list_kernels",
+        "canfar_lab.cli.kernel.list_kernels",
         return_value=[{"name": "astroai", "path": "/x"}, {"name": "mylab", "path": "/y"}],
     ):
         offered = _kernel_name_completer(None, "")
@@ -45,9 +45,9 @@ def test_kernel_name_completer_offers_registered_kernels() -> None:
 
 
 def test_kernel_name_completer_never_raises_without_jupyter() -> None:
-    from astroai_lab.cli.kernel import _kernel_name_completer
+    from canfar_lab.cli.kernel import _kernel_name_completer
 
-    with patch("astroai_lab.cli.kernel.list_kernels", side_effect=RuntimeError("boom")):
+    with patch("canfar_lab.cli.kernel.list_kernels", side_effect=RuntimeError("boom")):
         assert _kernel_name_completer(None, "") == []
 
 
@@ -55,7 +55,7 @@ def test_kernel_unregister_argument_wired() -> None:
     param = _param("kernel unregister", "name")
     assert getattr(param, "_custom_shell_complete", None) is not None
     with patch(
-        "astroai_lab.cli.kernel.list_kernels",
+        "canfar_lab.cli.kernel.list_kernels",
         return_value=[{"name": "mylab", "path": "/y"}],
     ):
         values = _completion_values(param, "")
@@ -71,10 +71,10 @@ def test_kernel_ensure_name_option_wired() -> None:
 
 
 def test_tool_completer_offers_installable_clis() -> None:
-    from astroai_lab.cli.agent_cmd import _tool_completer
+    from canfar_lab.cli.agent_cmd import _tool_completer
 
     with patch(
-        "astroai_lab.cli.agent_cmd.agent_install.list_tools_status",
+        "canfar_lab.cli.agent_cmd.agent_install.list_tools_status",
         return_value=[
             {"name": "kilo", "binary": "kilo", "installed": False, "description": ""},
             {"name": "goose", "binary": "goose", "installed": False, "description": ""},
@@ -86,10 +86,10 @@ def test_tool_completer_offers_installable_clis() -> None:
 
 
 def test_tool_completer_filters_by_prefix() -> None:
-    from astroai_lab.cli.agent_cmd import _tool_completer
+    from canfar_lab.cli.agent_cmd import _tool_completer
 
     with patch(
-        "astroai_lab.cli.agent_cmd.agent_install.list_tools_status",
+        "canfar_lab.cli.agent_cmd.agent_install.list_tools_status",
         return_value=[
             {"name": "kilo", "binary": "kilo", "installed": False, "description": ""},
             {"name": "goose", "binary": "goose", "installed": False, "description": ""},
@@ -105,10 +105,10 @@ def test_agent_install_tool_argument_wired() -> None:
 
 
 def test_bundle_completer_offers_bundle_names() -> None:
-    from astroai_lab.cli.agent_cmd import _bundle_completer
+    from canfar_lab.cli.agent_cmd import _bundle_completer
 
     with patch(
-        "astroai_lab.cli.agent_cmd.agent_setup_mod.agent_list_bundles",
+        "canfar_lab.cli.agent_cmd.agent_setup_mod.agent_list_bundles",
         return_value={"cursor": "Cursor config", "claude": "Claude config"},
     ):
         offered = _bundle_completer(None, "")
@@ -122,10 +122,10 @@ def test_agent_setup_bundle_argument_wired() -> None:
 
 
 def test_plugin_completer_offers_plugin_ids() -> None:
-    from astroai_lab.cli.agent_cmd import _plugin_completer
+    from canfar_lab.cli.agent_cmd import _plugin_completer
 
     with patch(
-        "astroai_lab.cli.agent_cmd.agent_plugins.plugin_ids",
+        "canfar_lab.cli.agent_cmd.agent_plugins.plugin_ids",
         return_value=["ponytail-rule", "ray-manager-mcp"],
     ):
         offered = _plugin_completer(None, "")
@@ -142,7 +142,7 @@ def test_agent_plugins_install_argument_wired() -> None:
 
 
 def test_plugin_kind_completer_offers_kinds() -> None:
-    from astroai_lab.cli.agent_cmd import _plugin_kind_completer
+    from canfar_lab.cli.agent_cmd import _plugin_kind_completer
 
     offered = set(_plugin_kind_completer(None, ""))
     assert offered == {"mcp", "tool", "rule"}

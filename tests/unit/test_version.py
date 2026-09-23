@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.version import PACKAGE_VERSION, display_version, version_info
+from canfar_lab.version import PACKAGE_VERSION, display_version, version_info
 
 
 def test_package_version_matches_pyproject() -> None:
@@ -20,7 +20,7 @@ def test_display_version_without_direct_url(monkeypatch: pytest.MonkeyPatch) -> 
     from importlib.metadata import PackageNotFoundError
 
     monkeypatch.setattr(
-        "astroai_lab.version.distribution",
+        "canfar_lab.version.distribution",
         lambda name: (_ for _ in ()).throw(PackageNotFoundError(name)),
     )
     assert display_version() == PACKAGE_VERSION
@@ -44,7 +44,7 @@ def test_display_version_appends_git_commit(monkeypatch: pytest.MonkeyPatch) -> 
                 }
             )
 
-    monkeypatch.setattr("astroai_lab.version.distribution", lambda name: Dist())
+    monkeypatch.setattr("canfar_lab.version.distribution", lambda name: Dist())
     assert display_version() == f"{PACKAGE_VERSION}+g2f7e99de"
     info = version_info()
     assert info["commit"] == "2f7e99deaf6f82a0bf4027a39ca79397f735bd83"

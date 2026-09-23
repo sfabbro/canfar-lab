@@ -6,14 +6,14 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent.setup import SetupResult, agent_setup
-from astroai_lab.agent.setup_state import (
+from canfar_lab.agent.setup import SetupResult, agent_setup
+from canfar_lab.agent.setup_state import (
     append_setup_log,
     dump_json,
     read_setup_state,
 )
-from astroai_lab.cli.main import app
-from astroai_lab.core.session_resources import collect_resources
+from canfar_lab.cli.main import app
+from canfar_lab.core.session_resources import collect_resources
 
 runner = CliRunner()
 
@@ -35,19 +35,19 @@ def test_agent_setup_records_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.run_bundle",
+        "canfar_lab.agent.setup.run_bundle",
         lambda *a, **k: None,
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.verify_setup",
+        "canfar_lab.agent.setup.verify_setup",
         lambda home: [],
     )
     monkeypatch.setattr(
-        "astroai_lab.core.paths.quota_used_pct",
+        "canfar_lab.core.paths.quota_used_pct",
         lambda path: 10,
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_default_plugins",
+        "canfar_lab.agent.plugins.apply_default_plugins",
         lambda **kwargs: [],
     )
     result = agent_setup(bundles=["cli"], force=True, dry_run=False, verify=True)
@@ -63,19 +63,19 @@ def test_agent_setup_verify_failure_marks_failed(
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.run_bundle",
+        "canfar_lab.agent.setup.run_bundle",
         lambda *a, **k: None,
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.verify_setup",
+        "canfar_lab.agent.setup.verify_setup",
         lambda home: ["missing mcp"],
     )
     monkeypatch.setattr(
-        "astroai_lab.core.paths.quota_used_pct",
+        "canfar_lab.core.paths.quota_used_pct",
         lambda path: 10,
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.plugins.apply_default_plugins",
+        "canfar_lab.agent.plugins.apply_default_plugins",
         lambda **kwargs: [],
     )
     result = agent_setup(bundles=["cli"], force=True, dry_run=False, verify=True)
@@ -90,7 +90,7 @@ def test_agent_setup_json_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.cli.agent_cmd.agent_setup_mod.agent_setup",
+        "canfar_lab.cli.agent_cmd.agent_setup_mod.agent_setup",
         lambda **k: SetupResult(
             ok=True,
             partial=False,
@@ -109,9 +109,9 @@ def test_agent_setup_json_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 def test_agent_install_json_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("astroai_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
+    monkeypatch.setattr("canfar_lab.agent.install.refuse_if_home_owned", lambda *a, **k: None)
     monkeypatch.setattr(
-        "astroai_lab.agent.install.classify_binary",
+        "canfar_lab.agent.install.classify_binary",
         lambda binary, home=None: {
             "binary": binary,
             "path": None,
@@ -157,11 +157,11 @@ def test_resources_cgroup_and_gpu(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.core.session_resources._cgroup_mem_pct",
+        "canfar_lab.core.session_resources._cgroup_mem_pct",
         lambda: 42.0,
     )
     monkeypatch.setattr(
-        "astroai_lab.core.session_resources._gpu_stats",
+        "canfar_lab.core.session_resources._gpu_stats",
         lambda: [
             {
                 "index": 0,
@@ -180,22 +180,22 @@ def test_resources_cgroup_and_gpu(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 def test_agent_sync_applies_bundles_and_stamps(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from astroai_lab.agent.setup import agent_sync
+    from canfar_lab.agent.setup import agent_sync
 
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     seen: list[str] = []
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.default_bundle_names",
+        "canfar_lab.agent.setup.default_bundle_names",
         lambda root: ["cli"],
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.run_bundle",
+        "canfar_lab.agent.setup.run_bundle",
         lambda name, *a, **k: seen.append(name),
     )
     monkeypatch.setattr(
-        "astroai_lab.agent.setup.ensure_agent_dirs",
+        "canfar_lab.agent.setup.ensure_agent_dirs",
         lambda *a, **k: None,
     )
     agent_sync(dry_run=False)
@@ -210,7 +210,7 @@ def test_agent_sync_applies_bundles_and_stamps(
 
 
 def test_install_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.agent import install as inst
+    from canfar_lab.agent import install as inst
 
     # kilo/goose/cline/opencode/codex + generic npm/uv agents migrated out of
     # TOOLS into the YAML registry; TOOLS keeps quirky installers + utilities
@@ -228,7 +228,7 @@ def test_install_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
 
     # Timeout path for curl|bash without network
     monkeypatch.setattr(
-        "astroai_lab.agent.install.subprocess.run",
+        "canfar_lab.agent.install.subprocess.run",
         lambda *a, **k: (_ for _ in ()).throw(
             __import__("subprocess").TimeoutExpired(cmd="curl", timeout=1)
         ),
@@ -240,7 +240,7 @@ def test_install_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
 def test_curl_pipe_bash_streams_installer_lines(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from astroai_lab.agent import install as inst
+    from canfar_lab.agent import install as inst
 
     class _FakeStdin:
         def write(self, data: bytes) -> None:
@@ -281,7 +281,7 @@ def test_curl_pipe_bash_streams_installer_lines(
 
 
 def test_cgroup_and_gpu_parsers(monkeypatch: pytest.MonkeyPatch) -> None:
-    from astroai_lab.core import session_resources as sr
+    from canfar_lab.core import session_resources as sr
 
     class FakePath:
         def __init__(self, p: object) -> None:
@@ -330,10 +330,10 @@ def test_agent_setup_quota_refuse(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.core.paths.quota_used_pct",
+        "canfar_lab.core.paths.quota_used_pct",
         lambda path: 99,
     )
-    from astroai_lab.errors import LabError
+    from canfar_lab.errors import LabError
 
     with pytest.raises(LabError, match="Home quota"):
         agent_setup(bundles=["cli"], force=False, dry_run=False)
@@ -344,9 +344,9 @@ def test_agent_project_json_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(
-        "astroai_lab.cli.agent_cmd.agent_setup_mod.agent_setup",
+        "canfar_lab.cli.agent_cmd.agent_setup_mod.agent_setup",
         lambda **k: (_ for _ in ()).throw(
-            __import__("astroai_lab.errors", fromlist=["LabError"]).LabError("nope")
+            __import__("canfar_lab.errors", fromlist=["LabError"]).LabError("nope")
         ),
     )
     result = runner.invoke(app, ["--json", "agent", "setup", "--project", "--path", str(tmp_path)])

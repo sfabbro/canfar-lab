@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.session_common import scratch_cache_root
-from astroai_lab.shell.session_env import export_shell, resolve_session_env
+from canfar_lab.core.session_common import scratch_cache_root
+from canfar_lab.shell.session_env import export_shell, resolve_session_env
 
 
 def test_user_tag_numeric_uid_when_passwd_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     import os
 
-    from astroai_lab.core import session_common
+    from canfar_lab.core import session_common
 
     monkeypatch.delenv("USER", raising=False)
     monkeypatch.delenv("LOGNAME", raising=False)
@@ -26,13 +26,16 @@ def test_user_tag_numeric_uid_when_passwd_missing(monkeypatch: pytest.MonkeyPatc
 
 def _scratch_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
     """Point WORK/SCRATCH at tmp_path subdirs; return (work, scratch)."""
+    home = tmp_path / "session_home"
+    home.mkdir(exist_ok=True)
     scratch = tmp_path / "scratch"
-    scratch.mkdir()
+    scratch.mkdir(exist_ok=True)
     work = tmp_path / "srcdir"
-    work.mkdir()
+    work.mkdir(exist_ok=True)
+    monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("WORK", str(work))
     monkeypatch.setenv("SCRATCH", str(scratch))
-    monkeypatch.delenv("ASTROAI_LAB_BIN_DIR", raising=False)
+    monkeypatch.delenv("CANFAR_LAB_BIN_DIR", raising=False)
     return work, scratch
 
 
@@ -55,7 +58,7 @@ def test_resolve_session_env_prefers_scratch_bin(
         monkeypatch.delenv(var, raising=False)
 
     env = resolve_session_env(ensure=True)
-    assert env.astroai_lab_bin_dir == scratch / ".local" / "bin"
+    assert env.canfar_lab_bin_dir == scratch / ".local" / "bin"
     assert env.uv_cache_dir == scratch_cache_root(work, scratch) / "uv"
 
 
@@ -68,8 +71,8 @@ def test_scratch_overrides_image_build_env(tmp_path: Path, monkeypatch: pytest.M
     env = resolve_session_env(ensure=False)
     cache_root = scratch_cache_root(work, scratch)
     assert env.pixi_cache_dir == cache_root / "pixi"
-    assert env.uv_python_install_dir == env.astroai_lab_runtime_root / "uv" / "python"
-    assert env.pixi_home == env.astroai_lab_runtime_root / "pixi"
+    assert env.uv_python_install_dir == env.canfar_lab_runtime_root / "uv" / "python"
+    assert env.pixi_home == env.canfar_lab_runtime_root / "pixi"
 
 
 def test_package_caches_never_land_on_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -110,7 +113,7 @@ def test_package_caches_off_home_without_scratch(
     monkeypatch.setenv("WORK", str(work))
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("XDG_CACHE_HOME", str(home / ".cache"))
-    monkeypatch.setattr("astroai_lab.shell.session_env.resolve_scratch_dir", lambda: None)
+    monkeypatch.setattr("canfar_lab.shell.session_env.resolve_scratch_dir", lambda: None)
 
     env = resolve_session_env(ensure=False)
     cache_root = scratch_cache_root(work, None)
@@ -128,7 +131,7 @@ def test_cache_root_not_home_when_work_is_on_home(
     work.mkdir(parents=True)
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("WORK", str(work))
-    monkeypatch.setattr("astroai_lab.shell.session_env.resolve_scratch_dir", lambda: None)
+    monkeypatch.setattr("canfar_lab.shell.session_env.resolve_scratch_dir", lambda: None)
 
     env = resolve_session_env(ensure=False)
     home_s = str(home)
@@ -171,7 +174,7 @@ def test_resolve_session_env_honors_scratch_backed_cache_var(
     assert env.pixi_cache_dir == cache_root / "pixi"
 
 
-def test_export_shell_includes_astroai_lab_vars(
+def test_export_shell_includes_canfar_lab_vars(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     work = tmp_path / "work"
@@ -180,13 +183,13 @@ def test_export_shell_includes_astroai_lab_vars(
     monkeypatch.delenv("SCRATCH", raising=False)
 
     out = export_shell(ensure=False)
-    assert "export ASTROAI_LAB_BIN_DIR=" in out
-    assert "export ASTROAI_LAB_RUNTIME_ROOT=" in out
+    assert "export CANFAR_LAB_BIN_DIR=" in out
+    assert "export CANFAR_LAB_RUNTIME_ROOT=" in out
     assert "export WORK=" in out
     assert "export SRCDIR=" in out
     # NOTE: no "SCRATCH absent" assertion — a writable /scratch on the host is
     # the canonical scratch default and is legitimately exported when unset.
-    assert "CANFAR_LAB_" not in out
+    assert "ASTROAI_LAB_" not in out
 
 
 def test_scratch_seeds_omp_xdg_and_puppeteer_cache(

@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import os
+from functools import lru_cache
+from pathlib import Path
+
+
+@lru_cache
+def bundle_root() -> Path:
+    env = os.environ.get("CANFAR_LAB_AGENT_BUNDLE", "").strip()
+    if env and Path(env).is_dir():
+        return Path(env)
+    pkg = Path(__file__).resolve().parent.parent / "data" / "agent"
+    if pkg.is_dir():
+        return pkg
+    raise FileNotFoundError(f"Agent bundle not found: {pkg}")
+
+
+def bundled_skill_src(name: str) -> Path:
+    """Legacy lookup for bundled SKILL.md trees (no longer shipped by AstroAI).
+
+    Skills install via ``npx skills``. Kept for one-shot reconcile cleanup of
+    old ``.astroai-managed`` trees that referenced package paths.
+    """
+    root = bundle_root()
+    for rel in (Path("skills") / name, Path("cursor") / "skills" / name):
+        src = root / rel
+        if (src / "SKILL.md").is_file():
+            return src
+    return root / "skills" / name
+
+
+def review_bench_root() -> Path:
+    """Vendored review-bench tree (``data/review-bench``).
+
+    ``CANFAR_LAB_DATA`` overrides the package data dir (dev checkouts);
+    otherwise resolves next to this file. Raises FileNotFoundError when the
+    tree is absent (editable install without sync).
+    """
+    env = os.environ.get("CANFAR_LAB_DATA", "").strip()
+    if env:
+        candidate = Path(env) / "review-bench"
+        if candidate.is_dir():
+            return candidate
+    pkg = Path(__file__).resolve().parent.parent / "data" / "review-bench"
+    if pkg.is_dir():
+        return pkg
+    raise FileNotFoundError(f"Review bench not found: {pkg}")

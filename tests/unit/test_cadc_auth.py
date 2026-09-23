@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from astroai_lab.core.cadc_auth import (
+from canfar_lab.core.cadc_auth import (
     cadc_cert_path,
     cadc_cli_auth_args,
     has_cadc_netrc,

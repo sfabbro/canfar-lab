@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from astroai_lab.agent import review_bench as rb
-from astroai_lab.agent.support import brand_logo_path, clear_support_cache, load_support
-from astroai_lab.cli.main import app
+from canfar_lab.agent import review_bench as rb
+from canfar_lab.agent.support import brand_logo_path, clear_support_cache, load_support
+from canfar_lab.cli.main import app
 
 runner = CliRunner()
 

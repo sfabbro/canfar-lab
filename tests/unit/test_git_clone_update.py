@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from astroai_lab.core.git import (
+from canfar_lab.core.git import (
     git_ensure_upstream,
     git_head_sha,
     git_sync_from_origin,
 )
-from astroai_lab.errors import LabError
-from astroai_lab.utils.subprocess import run, run_capture
+from canfar_lab.errors import LabError
+from canfar_lab.utils.subprocess import run, run_capture
 
 
 def _git_repo(path: Path) -> Path:

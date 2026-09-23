@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from astroai_lab.agent import review_bench as rb
-from astroai_lab.agent.registry import get_registry_agent
+from canfar_lab.agent import review_bench as rb
+from canfar_lab.agent.registry import get_registry_agent
 
 
 @pytest.fixture(autouse=True)
@@ -116,7 +116,7 @@ def test_hand_declared_models_prefer_live_catalog(
 ) -> None:
     monkeypatch.setenv("OPENCODE_API_KEY", "zen-key")
     monkeypatch.setattr(
-        "astroai_lab.agent.support.fetch_openai_compat_model_ids",
+        "canfar_lab.agent.support.fetch_openai_compat_model_ids",
         lambda *_a, **_k: ("live-model-a", "muse-spark-1.3-contributor"),
     )
     ensured = rb.ensure_dsh_settings(tmp_path, dry_run=False)
@@ -146,7 +146,7 @@ def test_unserviceable_routes_are_skipped_not_half_written(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An incomplete hand-declared route must not poison the settings document."""
-    from astroai_lab.agent import support as support_mod
+    from canfar_lab.agent import support as support_mod
 
     monkeypatch.setattr(support_mod, "load_support", _catalog_with_broken_route)
     monkeypatch.setattr(rb, "load_support", _catalog_with_broken_route)
@@ -161,7 +161,7 @@ def test_unserviceable_routes_are_skipped_not_half_written(
 
 def _catalog_with_broken_route() -> object:
     """Support catalog whose hand-declared route lost its endpoint."""
-    from astroai_lab.agent.support import Router, SupportCatalog
+    from canfar_lab.agent.support import Router, SupportCatalog
 
     return SupportCatalog(
         routers=(
