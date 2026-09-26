@@ -341,7 +341,7 @@ print('CANFAR $HOME key sync successful.')
         canfar,
         "create",
         "headless",
-        "images.canfar.net/astroai/base:latest",
+        "images.canfar.net/astroai/improc:latest",
         "--name",
         f"sync-keys-{int(time.time()) % 10000}",
         "--cpu",

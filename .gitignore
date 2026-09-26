@@ -12,3 +12,9 @@ htmlcov/
 examples/workload/mnist_cnn/data/
 examples/workload/mnist_cnn/*.pt
 uv.lock
+
+# Agent scratch directories
+.freebuff/
+.agents/
+.codex/
+
