@@ -53,6 +53,8 @@ canfar-lab = "canfar_lab.cli.main:main_entry"
 
 [project.entry-points."canfar.commands"]
 lab = "canfar_lab.cli.main:lab_app"
+studio = "canfar_lab.cli.studio:studio_app"
+open = "canfar_lab.cli.open_cmd:open_app"
 sync = "canfar_lab.cli.sync:sync_app"
 cluster = "canfar_workload.cli:cluster_app"
 run = "canfar_workload.cli:cmd_run"

@@ -1,11 +1,14 @@
-"""``astroai studio``: dsh-based coding portal (laptop + CANFAR)."""
+"""``canfar-lab studio``: Unified 5-in-1 development studio (laptop + CANFAR)."""
 
 from __future__ import annotations
 
 import os
+import shutil
+import socket
 from pathlib import Path
 from typing import Annotated, Literal
 
+import httpx
 import typer
 
 from canfar_lab import ui
@@ -14,14 +17,15 @@ from canfar_lab.errors import LabError
 
 studio_app = typer.Typer(
     help=(
-        "AstroAI Studio — dsh coding portal "
-        "(laptop localhost or CANFAR studio session).\n\n"
+        "AstroAI Studio — Unified 5-in-1 developer workbench "
+        "(Agents, Terminal, JupyterLab, Marimo, VS Code).\n\n"
         "Examples:\n"
-        "  astroai studio\n"
-        "  astroai studio ~/src/astroai/torchfits --port 3080\n"
-        "  astroai studio --prepare\n"
-        "  astroai studio --doctor\n"
-        "  astroai studio --profile canfar --prepare"
+        "  canfar lab studio\n"
+        "  canfar lab studio status\n"
+        "  canfar lab studio ~/src/astroai/torchfits --port 3080\n"
+        "  canfar lab studio --prepare\n"
+        "  canfar lab studio --doctor\n"
+        "  canfar lab studio --profile canfar --prepare"
     ),
     rich_markup_mode="rich",
     invoke_without_command=True,
@@ -29,9 +33,103 @@ studio_app = typer.Typer(
 
 
 def _on_skaha() -> bool:
-    # Match panel.py: platform may set lowercase skaha_sessionid.
     names = {key.upper() for key in os.environ}
     return "SKAHA_SESSIONID" in names or "SKAHA_HOSTNAME" in names
+
+
+def _check_port_open(host: str, port: int) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=0.2):
+            return True
+    except OSError:
+        return False
+
+
+@studio_app.command("status")
+def studio_status_cmd(
+    ctx: typer.Context,
+    json_output: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
+) -> None:
+    """Show live status of all Studio services (Agents, Terminal, JupyterLab, Marimo, VS Code)."""
+    opts = merge_opts(ctx)
+    is_json = json_output or opts.json
+
+    # 1. Try querying the in-container proxy status API
+    status_data = None
+    try:
+        resp = httpx.get("http://127.0.0.1:5000/api/studio/status", timeout=0.8)
+        if resp.status_code == 200:
+            status_data = resp.json()
+    except Exception:
+        pass
+
+    if status_data is None:
+        # Fallback to direct port checks
+        services = {
+            "agent": {"name": "Agents (DSH)", "port": 3080, "path": "/", "up": _check_port_open("127.0.0.1", 3080)},
+            "terminal": {"name": "Terminal (Ghostty)", "port": 4793, "path": "/terminal/", "up": _check_port_open("127.0.0.1", 4793)},
+            "jupyter": {"name": "JupyterLab", "port": 8888, "path": "/jupyter/", "up": _check_port_open("127.0.0.1", 8888)},
+            "marimo": {"name": "Marimo", "port": 2718, "path": "/marimo/", "up": _check_port_open("127.0.0.1", 2718)},
+            "vscode": {"name": "VS Code", "port": 8080, "path": "/vscode/", "up": _check_port_open("127.0.0.1", 8080)},
+            "hub": {"name": "Compute Hub", "port": 4792, "path": "/hub/", "up": _check_port_open("127.0.0.1", 4792)},
+        }
+        scratch_dir = os.environ.get("SCRATCH", "/scratch")
+        scratch_free_gb = 0.0
+        if os.path.isdir(scratch_dir):
+            try:
+                usage = shutil.disk_usage(scratch_dir)
+                scratch_free_gb = round(usage.free / (1024**3), 1)
+            except OSError:
+                pass
+        status_data = {
+            "status": "ready" if any(s["up"] for s in services.values()) else "starting",
+            "session_id": os.environ.get("skaha_sessionid"),
+            "prefix": f"/session/contrib/{os.environ.get('skaha_sessionid')}" if os.environ.get("skaha_sessionid") else None,
+            "services": services,
+            "resources": {
+                "cpus": os.cpu_count() or 1,
+                "scratch_free_gb": scratch_free_gb,
+            },
+        }
+
+    if is_json:
+        ui.print_json(status_data)
+        return
+
+    session_id = status_data.get("session_id") or "local"
+    prefix = status_data.get("prefix") or ""
+    ui.print_ok(f"AstroAI Studio Status (Session: {session_id})")
+
+    rows = []
+    for s_id, s_info in status_data.get("services", {}).items():
+        is_up = s_info.get("up", False)
+        status_badge = "[bold green]ONLINE[/bold green]" if is_up else "[dim]STOPPED[/dim]"
+        path_str = f"{prefix}{s_info.get('path', '')}" if prefix else s_info.get("path", "")
+        rows.append({
+            "Service": s_info.get("name", s_id),
+            "Port": str(s_info.get("port", "")),
+            "URL Path": path_str,
+            "Status": status_badge,
+        })
+
+    from rich.console import Console
+    from rich.table import Table
+
+    table = Table(title="Studio Services (Multiplexed on :5000)", show_header=True)
+    table.add_column("Service", style="bold")
+    table.add_column("Internal Port")
+    table.add_column("Public Path")
+    table.add_column("Status")
+
+    for r in rows:
+        table.add_row(r["Service"], r["Port"], r["URL Path"], r["Status"])
+
+    Console().print(table)
+
+    res = status_data.get("resources", {})
+    scratch_free = res.get("scratch_free_gb", 0)
+    cpus = res.get("cpus", 1)
+    ui.print_hint(f"Resources: {cpus} CPU cores | Scratch free: {scratch_free} GB")
 
 
 @studio_app.callback(invoke_without_command=True)
@@ -75,7 +173,7 @@ def studio_main(
         str | None,
         typer.Option(
             "--mcp-bin",
-            help="`astroai` binary the Studio MCP row runs (default: the one on PATH).",
+            help="`canfar-lab` binary the Studio MCP row runs (default: the one on PATH).",
         ),
     ] = None,
     force: Annotated[
@@ -101,6 +199,10 @@ def studio_main(
     from canfar_lab.utils.subprocess import run
 
     opts = merge_opts(ctx)
+
+    if repo == "status":
+        studio_status_cmd(ctx, json_output=opts.json)
+        return
 
     if skills:
         text = _studio.skills_onboarding_hint()

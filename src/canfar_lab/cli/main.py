@@ -8,6 +8,7 @@ import typer
 
 from canfar_lab.cli import clean as clean_mod
 from canfar_lab.cli import init_clone_env
+from canfar_lab.cli import open_cmd
 from canfar_lab.cli import status as status_mod
 from canfar_lab.cli.agent_cmd import agent_app
 from canfar_lab.cli.banner import show_banner
@@ -39,6 +40,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(kernel_app, name="kernel")
 app.add_typer(agent_app, name="agent")
 app.add_typer(studio_app, name="studio")
+open_cmd.register(app)
 app.add_typer(panel_app, name="panel")
 app.add_typer(panel_app, name="review")
 app.add_typer(sync_app, name="sync")

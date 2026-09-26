@@ -206,3 +206,31 @@ def test_dsh_version_pin_matches_agent_yaml() -> None:
     assert source == f"@deepseek-ai/dsh@{studio_mod.DSH_VERSION}"
     assert rb.DSH_VERSION == studio_mod.DSH_VERSION
     assert studio_mod.DSH_VERSION in sp.DSH_INSTALL_HINT
+
+
+def test_studio_status_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    res = runner.invoke(app, ["--json", "studio", "status"])
+    assert res.exit_code == 0
+    data = json.loads(res.output)
+    assert "services" in data
+    assert "agent" in data["services"]
+    assert "terminal" in data["services"]
+    assert "jupyter" in data["services"]
+    assert "marimo" in data["services"]
+    assert "vscode" in data["services"]
+
+
+def test_open_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("skaha_sessionid", "sess123")
+    res = runner.invoke(app, ["--json", "open", "jupyter", "analysis.ipynb"])
+    assert res.exit_code == 0
+    data = json.loads(res.output)
+    assert data["tool"] == "jupyter"
+    assert "sess123/jupyter/lab/tree" in data["url"]
+
+    res_code = runner.invoke(app, ["--json", "open", "vscode"])
+    assert res_code.exit_code == 0
+    data_code = json.loads(res_code.output)
+    assert data_code["tool"] == "vscode"
+    assert "sess123/vscode/" in data_code["url"]
+
