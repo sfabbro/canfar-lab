@@ -7,8 +7,7 @@ from typing import Annotated
 import typer
 
 from canfar_lab.cli import clean as clean_mod
-from canfar_lab.cli import init_clone_env
-from canfar_lab.cli import open_cmd
+from canfar_lab.cli import init_clone_env, open_cmd
 from canfar_lab.cli import status as status_mod
 from canfar_lab.cli.agent_cmd import agent_app
 from canfar_lab.cli.banner import show_banner

@@ -6,7 +6,7 @@ import os
 import shutil
 import socket
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 import typer
@@ -55,23 +55,55 @@ def studio_status_cmd(
     is_json = json_output or opts.json
 
     # 1. Try querying the in-container proxy status API
-    status_data = None
+    status_data: dict[str, Any] | None = None
     try:
         resp = httpx.get("http://127.0.0.1:5000/api/studio/status", timeout=0.8)
         if resp.status_code == 200:
-            status_data = resp.json()
-    except Exception:
+            parsed = resp.json()
+            if isinstance(parsed, dict):
+                status_data = parsed
+    except (httpx.HTTPError, OSError, ValueError):
         pass
 
     if status_data is None:
         # Fallback to direct port checks
         services = {
-            "agent": {"name": "Agents (DSH)", "port": 3080, "path": "/", "up": _check_port_open("127.0.0.1", 3080)},
-            "terminal": {"name": "Terminal (Ghostty)", "port": 4793, "path": "/terminal/", "up": _check_port_open("127.0.0.1", 4793)},
-            "jupyter": {"name": "JupyterLab", "port": 8888, "path": "/jupyter/", "up": _check_port_open("127.0.0.1", 8888)},
-            "marimo": {"name": "Marimo", "port": 2718, "path": "/marimo/", "up": _check_port_open("127.0.0.1", 2718)},
-            "vscode": {"name": "VS Code", "port": 8080, "path": "/vscode/", "up": _check_port_open("127.0.0.1", 8080)},
-            "hub": {"name": "Compute Hub", "port": 4792, "path": "/hub/", "up": _check_port_open("127.0.0.1", 4792)},
+            "agent": {
+                "name": "Agents (DSH)",
+                "port": 3080,
+                "path": "/",
+                "up": _check_port_open("127.0.0.1", 3080),
+            },
+            "terminal": {
+                "name": "Terminal (Ghostty)",
+                "port": 4793,
+                "path": "/terminal/",
+                "up": _check_port_open("127.0.0.1", 4793),
+            },
+            "jupyter": {
+                "name": "JupyterLab",
+                "port": 8888,
+                "path": "/jupyter/",
+                "up": _check_port_open("127.0.0.1", 8888),
+            },
+            "marimo": {
+                "name": "Marimo",
+                "port": 2718,
+                "path": "/marimo/",
+                "up": _check_port_open("127.0.0.1", 2718),
+            },
+            "vscode": {
+                "name": "VS Code",
+                "port": 8080,
+                "path": "/vscode/",
+                "up": _check_port_open("127.0.0.1", 8080),
+            },
+            "hub": {
+                "name": "Compute Hub",
+                "port": 4792,
+                "path": "/hub/",
+                "up": _check_port_open("127.0.0.1", 4792),
+            },
         }
         scratch_dir = os.environ.get("SCRATCH", "/scratch")
         scratch_free_gb = 0.0
@@ -81,10 +113,12 @@ def studio_status_cmd(
                 scratch_free_gb = round(usage.free / (1024**3), 1)
             except OSError:
                 pass
+        session_id = os.environ.get("SKAHA_SESSIONID") or os.environ.get("skaha_sessionid")  # noqa: SIM112
+        prefix = f"/session/contrib/{session_id}" if session_id else None
         status_data = {
             "status": "ready" if any(s["up"] for s in services.values()) else "starting",
-            "session_id": os.environ.get("skaha_sessionid"),
-            "prefix": f"/session/contrib/{os.environ.get('skaha_sessionid')}" if os.environ.get("skaha_sessionid") else None,
+            "session_id": session_id,
+            "prefix": prefix,
             "services": services,
             "resources": {
                 "cpus": os.cpu_count() or 1,
@@ -96,21 +130,28 @@ def studio_status_cmd(
         ui.print_json(status_data)
         return
 
-    session_id = status_data.get("session_id") or "local"
-    prefix = status_data.get("prefix") or ""
+    session_id = str(status_data.get("session_id") or "local")
+    prefix = str(status_data.get("prefix") or "")
     ui.print_ok(f"AstroAI Studio Status (Session: {session_id})")
 
-    rows = []
-    for s_id, s_info in status_data.get("services", {}).items():
-        is_up = s_info.get("up", False)
+    services_raw = status_data.get("services")
+    services_map: dict[str, Any] = services_raw if isinstance(services_raw, dict) else {}
+
+    rows: list[dict[str, str]] = []
+    for s_id, s_info_raw in services_map.items():
+        s_info: dict[str, Any] = s_info_raw if isinstance(s_info_raw, dict) else {}
+        is_up = bool(s_info.get("up", False))
         status_badge = "[bold green]ONLINE[/bold green]" if is_up else "[dim]STOPPED[/dim]"
-        path_str = f"{prefix}{s_info.get('path', '')}" if prefix else s_info.get("path", "")
-        rows.append({
-            "Service": s_info.get("name", s_id),
-            "Port": str(s_info.get("port", "")),
-            "URL Path": path_str,
-            "Status": status_badge,
-        })
+        svc_path = str(s_info.get("path", ""))
+        path_str = f"{prefix}{svc_path}" if prefix else svc_path
+        rows.append(
+            {
+                "Service": str(s_info.get("name", s_id)),
+                "Port": str(s_info.get("port", "")),
+                "URL Path": path_str,
+                "Status": status_badge,
+            }
+        )
 
     from rich.console import Console
     from rich.table import Table
@@ -126,7 +167,8 @@ def studio_status_cmd(
 
     Console().print(table)
 
-    res = status_data.get("resources", {})
+    res_raw = status_data.get("resources")
+    res: dict[str, Any] = res_raw if isinstance(res_raw, dict) else {}
     scratch_free = res.get("scratch_free_gb", 0)
     cpus = res.get("cpus", 1)
     ui.print_hint(f"Resources: {cpus} CPU cores | Scratch free: {scratch_free} GB")

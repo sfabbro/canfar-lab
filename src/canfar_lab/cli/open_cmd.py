@@ -19,8 +19,14 @@ def run_open(
 ) -> None:
     """Core logic to resolve tool/file URLs and display/open them."""
     opts = merge_opts(ctx)
-    session_id = os.environ.get("skaha_sessionid", "").strip()
-    base_url = f"https://workloads.canfar.net/session/contrib/{session_id}" if session_id else "http://127.0.0.1:5000"
+    session_id = (
+        os.environ.get("SKAHA_SESSIONID") or os.environ.get("skaha_sessionid") or ""  # noqa: SIM112
+    ).strip()
+    base_url = (
+        f"https://workloads.canfar.net/session/contrib/{session_id}"
+        if session_id
+        else "http://127.0.0.1:5000"
+    )
 
     tool = "agent"
     file_path = None
@@ -76,7 +82,8 @@ def run_open(
         url = f"{base_url}/"
 
     if opts.json:
-        ui.print_json({"tool": tool, "url": url, "file": file_path, "session_id": session_id or None})
+        payload = {"tool": tool, "url": url, "file": file_path, "session_id": session_id or None}
+        ui.print_json(payload)
         return
 
     ui.print_ok(f"Studio {tool.title()} URL:")
@@ -89,7 +96,7 @@ def register(app: typer.Typer) -> None:
         ctx: typer.Context,
         target: Annotated[
             str | None,
-            typer.Argument(help="Tool name (jupyter, vscode, marimo, terminal, agent) or file path."),
+            typer.Argument(help="Tool name (jupyter, vscode, marimo, terminal) or file path."),
         ] = None,
         path: Annotated[
             str | None,

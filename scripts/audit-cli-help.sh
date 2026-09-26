@@ -2,7 +2,7 @@
 # Audit astroai help text vs accepted flags. Exit 1 on mismatches.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CLI=(pixi run astroai)
+CLI=(pixi run canfar-lab)
 FAIL=0
 
 # Under GITHUB_ACTIONS=true, typer/rich colorizes --help output and splits

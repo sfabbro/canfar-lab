@@ -233,4 +233,3 @@ def test_open_command(monkeypatch: pytest.MonkeyPatch) -> None:
     data_code = json.loads(res_code.output)
     assert data_code["tool"] == "vscode"
     assert "sess123/vscode/" in data_code["url"]
-
