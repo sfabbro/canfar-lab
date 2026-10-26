@@ -34,7 +34,7 @@ from canfar_lab.utils.subprocess import run_cmd
 desk_app = typer.Typer(
     name="desk",
     help=(
-        "Local browser dsh. The desk bar starts collapsed; click Studio for Sync "
+        "Local browser dsh. The desk bar starts collapsed; click Desk for Sync "
         "to CANFAR and Launch Studio, or set CANFAR_LAB_DESK=1 to open it.\n\n"
         "Examples:\n"
         "  canfar lab desk\n"

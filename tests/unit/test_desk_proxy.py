@@ -390,8 +390,9 @@ def test_desk_buttons_shape():
     assert labels["sync"] == "Sync to CANFAR"
     assert labels["launch-studio"] == "Launch Studio"
     dock = proxy.load_dock_html()
-    assert "AstroAI Studio" in dock
+    assert "AstroAI Desk" in dock
     assert 'id="astroai-dock-handle"' in dock
+    assert ">Desk</button>" in dock
 
 
 def test_html_injects_dock_when_disabled(backend):

@@ -495,7 +495,7 @@ def studio_main(
     )
     if listen["desk"]:
         ui.print_hint(
-            "  Desk starts collapsed — click Studio (top right) for Sync / Launch, "
+            "  Desk starts collapsed — click Desk (top right) for Sync / Launch, "
             "or set CANFAR_LAB_DESK=1 to open the bar."
         )
     ui.print_hint("  Team review: New session → preset «AstroAI Studio Team»")
