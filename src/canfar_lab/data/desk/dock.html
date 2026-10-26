@@ -1,6 +1,6 @@
 <!-- AstroAI Desk dock — single source asset (canfar-lab src/canfar_lab/data/desk/dock.html).
      Vendored into canfar-containers via scripts/sync-desk-assets.sh; keep both proxies stdlib-only. -->
-<meta name="astroai-dock-revision" content="4">
+<meta name="astroai-dock-revision" content="5">
 <style>
   #astroai-dock.ad-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 2147483000; height: 44px;
@@ -90,8 +90,14 @@
     try { localStorage.setItem("astroai-dock-hidden", hidden ? "1" : "0"); } catch (err) {}
   }
 
-  var hidden = false;
-  try { hidden = localStorage.getItem("astroai-dock-hidden") === "1"; } catch (err) { hidden = false; }
+  // Prefer the user's last Hide/Show. Otherwise start collapsed when the
+  // process launched with desk off (CANFAR_LAB_DESK unset) — the Studio
+  // handle turns the bar on without a restart.
+  var hidden = cfg.enabled === false;
+  try {
+    var stored = localStorage.getItem("astroai-dock-hidden");
+    if (stored === "1" || stored === "0") { hidden = stored === "1"; }
+  } catch (err) {}
   applyHidden(hidden);
   document.getElementById("ad-toggle").addEventListener("click", function () { applyHidden(true); });
   if (handle) { handle.addEventListener("click", function () { applyHidden(false); }); }

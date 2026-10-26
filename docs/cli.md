@@ -225,9 +225,10 @@ seeding, and the CANFAR proxy.
 
 Browser cockpit for a laptop: the **latest dsh** (resolved through npm
 dist-tags, default spec `newest`; offline falls back to the repo pin) served on
-loopback behind a small stdlib proxy. The floating AstroAI desk is off
-until `CANFAR_LAB_DESK=1` (or `desk: true`); then it shows Sync to CANFAR and
-Launch Studio. Design and protocol: [desk-sync.md](desk-sync.md).
+loopback behind a small stdlib proxy. The desk bar starts collapsed; click
+**Studio** (top right) for Sync to CANFAR and Launch Studio, or set
+`CANFAR_LAB_DESK=1` (or `desk: true`) to open it at boot. Design and protocol:
+[desk-sync.md](desk-sync.md).
 
 | Flag | What it does |
 |------|----------------|
